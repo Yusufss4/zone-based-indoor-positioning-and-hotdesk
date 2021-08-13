@@ -9,7 +9,7 @@
 //Bluetooth Scan
 #include "BLEScanner.h"
 
-#define DATA_SEND 60000
+#define DATA_SEND 20000
 
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
@@ -18,6 +18,7 @@ unsigned long last_time = 0;
 
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
+char data[50];
 
 void connectToWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -98,12 +99,15 @@ void loop() {
     //Serial.write(RSSIValue[0]);
     //mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSIValue, 1); //1 byte.
 
-    char RSSI_1[] = "123";
+    //char RSSI_1[]
+    int RSSI_1 = random(10, 80);
+    sprintf(data, "%d", RSSI_1);
+    //char RSSI_1[] = "123";
     //sprintf(data, "%f", pres);
-    mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSI_1);
+    mqttClient.publish("/o1/m1/esp32-1/scn-dvc", data);
 
     //publish string
-    char MACAdress[] = "Yusuf";
+    char MACAdress[] = "00:1B:44:11:3A:B7";
     //sprintf(data, "%f", pres);;
     mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
     last_time = now;
