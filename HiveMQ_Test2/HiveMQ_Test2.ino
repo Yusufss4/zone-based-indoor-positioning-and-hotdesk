@@ -5,14 +5,11 @@
 #include <PubSubClient.h>
 
 //Bluetooth Scan
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEScan.h>
-#include <BLEAdvertisedDevice.h>
-#include <BLEBeacon.h>
+#include "BLEScanner.h"
 
 
 #define DATA_SEND 60000
+//Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
 
 long last_time = 0;
@@ -52,6 +49,7 @@ void setup() {
   Serial.begin(9600);
   connectToWiFi();
   setupMQTT();
+  BLEScannerSetup();
   log_d("Total heap: %d", ESP.getHeapSize());
   log_d("Free heap: %d", ESP.getFreeHeap());
   log_d("Total PSRAM: %d", ESP.getPsramSize());
@@ -83,6 +81,7 @@ void loop() {
   }
 
   mqttClient.loop();
+  BLEScannerLoop();
   long now = millis();
   if (now - last_time > DATA_SEND) {
 
