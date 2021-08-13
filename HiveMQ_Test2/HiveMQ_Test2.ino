@@ -101,9 +101,10 @@ void loop() {
     mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSI_1);
     
     //publish string
-    char MACAdress[] = "00:1B:44:11:3A:B7";
+    char MACAdress[] = "Yusuf";
     //sprintf(data, "%f", pres);
     Serial.println(MACAdress);
+    ////o1/m1/esp32-1/info
     mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
     last_time = now;
   }
