@@ -1,4 +1,6 @@
 #include <Arduino.h>
+//This code is for Meeting or Kitchen ESP32s Scanning Gateway
+//Topic list included in - https://docs.google.com/document/d/1ixmkAzqzE-u8imwFLdVT4XZ1hFTCaz8fN4PDlNe0_3w/edit?usp=sharing
 
 //MQTT and WiFi
 #include <WiFiClientSecure.h>
@@ -7,26 +9,25 @@
 //Bluetooth Scan
 #include "BLEScanner.h"
 
-
 #define DATA_SEND 60000
+
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
 
-long last_time = 0;
+unsigned long last_time = 0;
 
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
 
 void connectToWiFi() {
-  Serial.print("Connecting to..");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
     delay(500);
   }
   Serial.print("Connected to the WiFi.");
 }
 
+#ifndef ESP32-SCANNER
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Callback - ");
   Serial.print("Message:");
@@ -35,12 +36,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.print("\n");
 }
+#endif
 
 void setupMQTT() {
   wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
   // set the callback function
+#ifndef ESP32-SCANNER
   mqttClient.setCallback(callback);
+#endif
   mqttClient.setKeepAlive(60);
 }
 
@@ -50,20 +54,19 @@ void setup() {
   connectToWiFi();
   setupMQTT();
   BLEScannerSetup();
-  log_d("Total heap: %d", ESP.getHeapSize());
-  log_d("Free heap: %d", ESP.getFreeHeap());
-  log_d("Total PSRAM: %d", ESP.getPsramSize());
-  log_d("Free PSRAM: %d", ESP.getFreePsram());
+  //  log_d("Total heap: %d", ESP.getHeapSize());
+  //  log_d("Free heap: %d", ESP.getFreeHeap());
+  //  log_d("Total PSRAM: %d", ESP.getPsramSize());
+  //  log_d("Free PSRAM: %d", ESP.getFreePsram());
 }
 
 void reconnectToTheBroker() {
-  Serial.println("Connecting to MQTT Broker...");
   while (!mqttClient.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("Connected.");
-      // subscribe to topic
-      mqttClient.subscribe("/o1/desk1/esp32-1/cm");
+      //subscribe to topic
+      //mqttClient.subscribe("/o1/desk1/esp32-1/cm");
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -82,11 +85,11 @@ void loop() {
 
   mqttClient.loop();
   BLEScannerLoop();
-  long now = millis();
+  unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
 
     // Publishing data through MQTT
-    
+
     //publish byte.
     //int somethingElse = 123;
     //byte RSSIValue[] = {0x82}; //130
@@ -97,14 +100,11 @@ void loop() {
 
     char RSSI_1[] = "123";
     //sprintf(data, "%f", pres);
-    Serial.println(RSSI_1);
     mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSI_1);
-    
+
     //publish string
     char MACAdress[] = "Yusuf";
-    //sprintf(data, "%f", pres);
-    Serial.println(MACAdress);
-    ////o1/m1/esp32-1/info
+    //sprintf(data, "%f", pres);;
     mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
     last_time = now;
   }
