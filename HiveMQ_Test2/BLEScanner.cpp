@@ -39,7 +39,7 @@ void BLEScannerSetup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
   pBLEScan->setInterval(100);
-  pBLEScan->setWindow(99);  // less or equal setInterval value
+  pBLEScan->setWindow(40);  // less or equal setInterval value
 }
 
 // This is how to use the six servos to form the passed-in pattern
