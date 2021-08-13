@@ -1,12 +1,11 @@
 #ifndef MQTT_CONFIG_H
 #define MQTT_CONFIG_H
 
-/**
- * WiFi setup
- */
+/* WiFi setup Change Yours*/
 #define WIFI_SSID            "SUPERONLINE_WiFi_5918"
 #define WIFI_PASSWORD        "V9dp6ACGgxjE"
 
+/* Dont Change */
 const char* ca_cert = \
 "-----BEGIN CERTIFICATE-----\n" \
 "MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/\n" \
@@ -29,12 +28,13 @@ const char* ca_cert = \
 "Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ\n" \
 "-----END CERTIFICATE-----\n";
 
-
+/* You can change but you dont need to*/
 #define MQTT_SERVER_NAME    "f1ec066d96ce468e9e8ded72f52952b9.s2.eu.hivemq.cloud"
 #define MQTT_PORT    8883
 #define MQTT_USER_NAME "yusufss"
 #define MQTT_PASSWORD "Yusuf123*"
 
+/* ALWAYS CHANGE!!*/
 #define CLIENT_ID "ESP32Client-MeetingRoom"
 
 
