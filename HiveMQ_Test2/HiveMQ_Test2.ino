@@ -8,8 +8,10 @@
 
 //Bluetooth Scan
 #include "BLEScanner.h"
+#include "Globals.h"
 
 #define DATA_SEND 20000
+#define MQTT_MAX_PACKET_SIZE 1000
 
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
@@ -18,7 +20,11 @@ unsigned long last_time = 0;
 
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
-char data[50];
+ 
+uint8_t bufferIndex = 0; // Found devices counter
+BeaconData buffer[50]; 
+uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
+
 
 void connectToWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -88,6 +94,11 @@ void loop() {
   BLEScannerLoop();
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
+     for (uint8_t i = 0; i < bufferIndex; i++) {
+    Serial.print(buffer[i].address);
+    Serial.print(" : ");
+    Serial.println(buffer[i].rssi);
+  }
 
     // Publishing data through MQTT
 
@@ -100,16 +111,17 @@ void loop() {
     //mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSIValue, 1); //1 byte.
 
     //char RSSI_1[]
-    int RSSI_1 = random(10, 80);
-    sprintf(data, "%d", RSSI_1);
+    //int RSSI_1 = random(10, 80);
+    //sprintf(data, "%d", RSSI_1);
     //char RSSI_1[] = "123";
     //sprintf(data, "%f", pres);
-    mqttClient.publish("/o1/m1/esp32-1/scn-dvc", data);
+    //mqttClient.publish("/o1/m1/esp32-1/scn-dvc", data);
 
     //publish string
     char MACAdress[] = "00:1B:44:11:3A:B7";
     //sprintf(data, "%f", pres);;
     mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
+    bufferIndex = 0; //After publishing make the buffer index 0.
     last_time = now;
   }
 
