@@ -99,6 +99,7 @@ void loop() {
 
   mqttClient.loop();
   BLEScannerLoop();
+  filterBuffer();
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
      for (uint8_t i = 0; i < bufferIndex; i++) {
@@ -130,8 +131,13 @@ void loop() {
     char MACAdress[] = "00:1B:44:11:3A:B7";
     //sprintf(data, "%f", pres);;
     //mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
-    bufferIndex = 0; //After publishing make the buffer index 0.
+     //After publishing make the buffer index 0.
     last_time = now;
   }
+  bufferIndex = 0; //Reset the buffer. 
 
+}
+
+void filterBuffer() {
+  
 }
