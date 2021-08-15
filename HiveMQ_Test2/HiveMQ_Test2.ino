@@ -10,7 +10,7 @@
 #include "BLEScanner.h"
 #include "Globals.h"
 
-#define DATA_SEND 20000
+#define DATA_SEND 40000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
 //Change Config File to Connect the MQTT Broker and WiFi
@@ -68,6 +68,7 @@ void setup() {
 }
 
 void reconnectToTheBroker() {
+  int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
@@ -78,7 +79,13 @@ void reconnectToTheBroker() {
     else {
       Serial.print("Connection failed, rc=");
       Serial.print(mqttClient.state());
+      numberOfConnectionsTried++;
+      if(numberOfConnectionsTried > 5) {
+        Serial.print("Rebooting the WiFi connection...");
+        connectToWiFi();
+      }
     }
+  delay(500);  
   }
 }
 
@@ -95,6 +102,8 @@ void loop() {
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
      for (uint8_t i = 0; i < bufferIndex; i++) {
+    Serial.print(i);
+    Serial.print(" : ");
     Serial.print(buffer[i].address);
     Serial.print(" : ");
     Serial.println(buffer[i].rssi);
@@ -120,7 +129,7 @@ void loop() {
     //publish string
     char MACAdress[] = "00:1B:44:11:3A:B7";
     //sprintf(data, "%f", pres);;
-    mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
+    //mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
     bufferIndex = 0; //After publishing make the buffer index 0.
     last_time = now;
   }
