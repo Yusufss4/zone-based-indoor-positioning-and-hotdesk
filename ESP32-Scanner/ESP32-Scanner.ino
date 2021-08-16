@@ -116,56 +116,10 @@ void loop() {
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
-    // Publishing data through MQTT
 
-    //publish byte.
-    //int somethingElse = 123;
-    //byte RSSIValue[] = {0x82}; //130
-    //RSSIValue[0] = 123;
-    //sprintf(data, "%d", humidity);
-    //Serial.write(RSSIValue[0]);
-    //mqttClient.publish("/o1/m1/esp32-1/scn-dvc", RSSIValue, 1); //1 byte.
+    publishScanDataToMQTT(uniqueBuffer, numberOfDevicesFound);
+    publishDeviceInfoToMQTT();
 
-    //char RSSI_1[]
-    //int RSSI_1 = random(10, 80);
-    //sprintf(data, "%d", RSSI_1);
-    //char RSSI_1[] = "123";
-    //sprintf(data, "%f", pres);
-    //mqttClient.publish("/o1/m1/esp32-1/scn-dvc", data);
-
-    //publish string
-    char MACAdress[] = "00:1B:44:11:3A:B7";
-    //sprintf(data, "%f", pres);;
-    //mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
-    //After publishing make the buffer index 0.
-
-    String payloadString = "{\"e\":[";
-    Serial.println("Publishing the data...");
-    for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
-      payloadString += "{\"m\":\"";
-      payloadString += String(uniqueBuffer[i].address);
-      payloadString += "\",\"r\":\"";
-      payloadString += String(uniqueBuffer[i].rssi);
-      payloadString += "\"}";
-      if (i < numberOfDevicesFound - 1) {
-        payloadString += ',';
-      }
-    }
-    // SenML ends. Add this stations MAC
-    payloadString += "],\"st\":\"";
-    payloadString += String(WiFi.macAddress());
-    // Add board temperature in fahrenheit
-    payloadString += "\",\"t\":\"";
-    payloadString += String(40);
-    payloadString += "\"}";
-
-    // Print and publish payload
-    Serial.print("MAX len: ");
-    Serial.println(MQTT_MAX_PACKET_SIZE);
-
-    Serial.print("Payload length: ");
-    Serial.println(payloadString.length());
-    Serial.println(payloadString);
     last_time = now;
   }
   bufferIndex = 0; //Reset the buffer.
@@ -179,7 +133,7 @@ int filterBuffer(BeaconData *filteredBuffer, int localBufferIndex, int bufferSiz
   int currentRssi = 0;
   int i  = 0; int j = 0; int counter = 0;
   for (j = 0; j < localBufferIndex; j++) {
-    if (!deviceCounted[j])  // Only enter inner-loop if car hasn't been counted already
+    if (!deviceCounted[j])  // Only enter inner-loop if MAC address hasn't been counted already
     {
       for (i = 0; i < localBufferIndex; i++) {
         if (strcmp(buffer[i].address, buffer[j].address) == 0) {
@@ -210,4 +164,51 @@ void printBuffer(BeaconData *printBuffer, int bufferSize) {
     Serial.print(" : ");
     Serial.println(printBuffer[i].rssi);
   }
+}
+
+void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
+
+  String payloadString = "{\"e\":[";
+  Serial.println("Publishing the data...");
+  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
+    payloadString += "{\"m\":\"";
+    payloadString += String(uniqueBuffer[i].address);
+    payloadString += "\",\"r\":\"";
+    payloadString += String(uniqueBuffer[i].rssi);
+    payloadString += "\"}";
+    if (i < numberOfDevicesFound - 1) {
+      payloadString += ',';
+    }
+  }
+  // SenML ends. Add this stations MAC
+  payloadString += "]\"}";
+  //    payloadString += "],\"st\":\"";
+  //    payloadString += String(WiFi.macAddress());
+  //    // Add board temperature in fahrenheit
+  //    payloadString += "\",\"t\":\"";
+  //    payloadString += String(40);
+  //    payloadString += "\"}";
+
+  // Print and publish payload
+  Serial.print("MAX len: ");
+  Serial.println(MQTT_MAX_PACKET_SIZE);
+
+  Serial.print("Payload length: ");
+  Serial.println(payloadString.length());
+  Serial.println(payloadString);
+
+  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
+
+  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+  //result = client.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
+  //Serial.print("PUB Result: ");
+  //Serial.println(result);
+}
+
+void publishDeviceInfoToMQTT() {
+  //Not implemented. Temp and humidity.
+  //result = client.publish("/o1/m1/esp32-1/info", message_char_buffer, payloadString.length(), false);
+  //  Serial.print("PUB Result: ");
+  //  Serial.println(result);
 }
