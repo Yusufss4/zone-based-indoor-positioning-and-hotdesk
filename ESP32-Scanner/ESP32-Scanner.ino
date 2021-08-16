@@ -10,6 +10,7 @@
 #include "BLEScanner.h"
 #include "Globals.h"
 
+#define BUFFER_SIZE 50
 #define DATA_SEND 40000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
@@ -22,7 +23,7 @@ WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
  
 uint8_t bufferIndex = 0; // Found devices counter
-BeaconData buffer[50]; 
+BeaconData buffer[BUFFER_SIZE]; 
 uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
 
 
@@ -91,6 +92,9 @@ void reconnectToTheBroker() {
 
 
 void loop() {
+  
+  BeaconData uniqueBuffer[BUFFER_SIZE];
+  int numberOfDevicesFound = 0;
 
   if (!mqttClient.connected()) {
     Serial.println("Reconnecting to the broker..");
@@ -98,18 +102,21 @@ void loop() {
   }
 
   mqttClient.loop();
+  //Scan the devices
   BLEScannerLoop();
-  filterBuffer();
+  printBuffer(buffer,bufferIndex);
+
+  /* filterBuffer(buffer,uniqueBuffer,bufferIndex,BUFFER_SIZE); Actually should be like this. 
+  But buffer and bufferIndex is global.*/
+  numberOfDevicesFound = filterBuffer(uniqueBuffer,bufferIndex,BUFFER_SIZE);
+  
+  Serial.print("Number of devices found: ");
+  Serial.print(numberOfDevicesFound);
+  printBuffer(uniqueBuffer,numberOfDevicesFound);
+  
+
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
-     for (uint8_t i = 0; i < bufferIndex; i++) {
-    Serial.print(i);
-    Serial.print(" : ");
-    Serial.print(buffer[i].address);
-    Serial.print(" : ");
-    Serial.println(buffer[i].rssi);
-  }
-
     // Publishing data through MQTT
 
     //publish byte.
@@ -138,6 +145,42 @@ void loop() {
 
 }
 
-void filterBuffer() {
-  
+int filterBuffer(BeaconData *filteredBuffer,int localBufferIndex, int bufferSize) {
+Serial.println("Filtering the buffer....");
+int deviceCounted[bufferSize] = {0};
+int numberOfUniqeAdresses = 0;
+int currentRssi = 0;
+int i  = 0; int j = 0; int counter = 0;
+  for (j = 0; j < localBufferIndex; j++) {
+    if (!deviceCounted[j])  // Only enter inner-loop if car hasn't been counted already
+    {
+      for (i = 0; i < localBufferIndex; i++) {
+        if (strcmp(buffer[i].address, buffer[j].address) == 0) {
+          counter++; //How many repetation for that mac adress.
+          currentRssi += buffer[i].rssi;
+          deviceCounted[i] = 1;  // Mark device as counted
+        }
+      }
+      numberOfUniqeAdresses++;
+      Serial.print("MAC: ");
+      Serial.print(buffer[j].address);
+      Serial.print(" : COUNTER: ");
+      Serial.println(counter);
+      strcpy(filteredBuffer[numberOfUniqeAdresses-1].address,buffer[j].address);
+      filteredBuffer[numberOfUniqeAdresses-1].rssi = currentRssi/counter;
+      counter = 0; currentRssi = 0;
+    }
+  }
+  return numberOfUniqeAdresses;
+}
+
+void printBuffer(BeaconData *printBuffer,int bufferSize) {
+   Serial.println("Printing the buffer...");
+   for (uint8_t i = 0; i < bufferSize; i++) {
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.print(printBuffer[i].address);
+    Serial.print(" : ");
+    Serial.println(printBuffer[i].rssi);
+  }
 }
