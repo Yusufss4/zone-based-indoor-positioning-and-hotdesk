@@ -15,16 +15,18 @@ int scanTime = 10; //In seconds
 static BLEAddress *pMAC_Address;
 BLEScan* pBLEScan;
 
+#define BLE_INTERVAL 100
+#define BLE_WINDOW 40
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
     void onResult(BLEAdvertisedDevice advertisedDevice)
     {
-    extern uint8_t bufferIndex;
-    extern BeaconData buffer[];
-    if(bufferIndex >= 48) {
-      return;
-    }
+      extern uint8_t bufferIndex;
+      extern BeaconData buffer[];
+      if (bufferIndex >= BUFFER_SIZE - 2) {
+        return;
+      }
       if (advertisedDevice.haveName())
       {
         pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
@@ -32,7 +34,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         strcpy (buffer[bufferIndex].address, advertisedDevice.getAddress().toString().c_str());
         bufferIndex++;
       }
-     }
+    }
 };
 
 void BLEScannerSetup() {
@@ -41,8 +43,8 @@ void BLEScannerSetup() {
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
-  pBLEScan->setInterval(100);
-  pBLEScan->setWindow(40);  // less or equal setInterval value
+  pBLEScan->setInterval(BLE_INTERVAL);
+  pBLEScan->setWindow(BLE_WINDOW);  // less or equal setInterval value
 }
 
 void BLEScannerLoop() {
@@ -50,5 +52,5 @@ void BLEScannerLoop() {
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
   delete pMAC_Address;
   pMAC_Address = NULL;
-  
-} 
+
+}

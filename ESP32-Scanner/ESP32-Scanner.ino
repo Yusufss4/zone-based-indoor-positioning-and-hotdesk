@@ -10,7 +10,6 @@
 #include "BLEScanner.h"
 #include "Globals.h"
 
-#define BUFFER_SIZE 50
 #define DATA_SEND 40000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
@@ -21,9 +20,9 @@ unsigned long last_time = 0;
 
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
- 
+
 uint8_t bufferIndex = 0; // Found devices counter
-BeaconData buffer[BUFFER_SIZE]; 
+BeaconData buffer[BUFFER_SIZE];
 uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
 
 
@@ -81,18 +80,18 @@ void reconnectToTheBroker() {
       Serial.print("Connection failed, rc=");
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
-      if(numberOfConnectionsTried > 5) {
+      if (numberOfConnectionsTried > 5) {
         Serial.print("Rebooting the WiFi connection...");
         connectToWiFi();
       }
     }
-  delay(500);  
+    delay(500);
   }
 }
 
 
 void loop() {
-  
+
   BeaconData uniqueBuffer[BUFFER_SIZE];
   int numberOfDevicesFound = 0;
 
@@ -104,16 +103,16 @@ void loop() {
   mqttClient.loop();
   //Scan the devices
   BLEScannerLoop();
-  printBuffer(buffer,bufferIndex);
+  printBuffer(buffer, bufferIndex);
 
-  /* filterBuffer(buffer,uniqueBuffer,bufferIndex,BUFFER_SIZE); Actually should be like this. 
-  But buffer and bufferIndex is global.*/
-  numberOfDevicesFound = filterBuffer(uniqueBuffer,bufferIndex,BUFFER_SIZE);
-  
+  /* filterBuffer(buffer,uniqueBuffer,bufferIndex,BUFFER_SIZE); Actually should be like this.
+    But buffer and bufferIndex is global.*/
+  numberOfDevicesFound = filterBuffer(uniqueBuffer, bufferIndex, BUFFER_SIZE);
+
   Serial.print("Number of devices found: ");
   Serial.print(numberOfDevicesFound);
-  printBuffer(uniqueBuffer,numberOfDevicesFound);
-  
+  printBuffer(uniqueBuffer, numberOfDevicesFound);
+
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
@@ -138,19 +137,47 @@ void loop() {
     char MACAdress[] = "00:1B:44:11:3A:B7";
     //sprintf(data, "%f", pres);;
     //mqttClient.publish("/o1/m1/esp32-1/info", MACAdress);
-     //After publishing make the buffer index 0.
+    //After publishing make the buffer index 0.
+
+    String payloadString = "{\"e\":[";
+    Serial.println("Publishing the data...");
+    for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
+      payloadString += "{\"m\":\"";
+      payloadString += String(uniqueBuffer[i].address);
+      payloadString += "\",\"r\":\"";
+      payloadString += String(uniqueBuffer[i].rssi);
+      payloadString += "\"}";
+      if (i < numberOfDevicesFound - 1) {
+        payloadString += ',';
+      }
+    }
+    // SenML ends. Add this stations MAC
+    payloadString += "],\"st\":\"";
+    payloadString += String(WiFi.macAddress());
+    // Add board temperature in fahrenheit
+    payloadString += "\",\"t\":\"";
+    payloadString += String(40);
+    payloadString += "\"}";
+
+    // Print and publish payload
+    Serial.print("MAX len: ");
+    Serial.println(MQTT_MAX_PACKET_SIZE);
+
+    Serial.print("Payload length: ");
+    Serial.println(payloadString.length());
+    Serial.println(payloadString);
     last_time = now;
   }
-  bufferIndex = 0; //Reset the buffer. 
+  bufferIndex = 0; //Reset the buffer.
 
 }
 
-int filterBuffer(BeaconData *filteredBuffer,int localBufferIndex, int bufferSize) {
-Serial.println("Filtering the buffer....");
-int deviceCounted[bufferSize] = {0};
-int numberOfUniqeAdresses = 0;
-int currentRssi = 0;
-int i  = 0; int j = 0; int counter = 0;
+int filterBuffer(BeaconData *filteredBuffer, int localBufferIndex, int bufferSize) {
+  Serial.println("Filtering the buffer....");
+  int deviceCounted[bufferSize] = {0};
+  int numberOfUniqeAdresses = 0;
+  int currentRssi = 0;
+  int i  = 0; int j = 0; int counter = 0;
   for (j = 0; j < localBufferIndex; j++) {
     if (!deviceCounted[j])  // Only enter inner-loop if car hasn't been counted already
     {
@@ -166,17 +193,17 @@ int i  = 0; int j = 0; int counter = 0;
       Serial.print(buffer[j].address);
       Serial.print(" : COUNTER: ");
       Serial.println(counter);
-      strcpy(filteredBuffer[numberOfUniqeAdresses-1].address,buffer[j].address);
-      filteredBuffer[numberOfUniqeAdresses-1].rssi = currentRssi/counter;
+      strcpy(filteredBuffer[numberOfUniqeAdresses - 1].address, buffer[j].address);
+      filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter;
       counter = 0; currentRssi = 0;
     }
   }
   return numberOfUniqeAdresses;
 }
 
-void printBuffer(BeaconData *printBuffer,int bufferSize) {
-   Serial.println("Printing the buffer...");
-   for (uint8_t i = 0; i < bufferSize; i++) {
+void printBuffer(BeaconData *printBuffer, int bufferSize) {
+  Serial.println("\nPrinting the buffer...");
+  for (uint8_t i = 0; i < bufferSize; i++) {
     Serial.print(i);
     Serial.print(" : ");
     Serial.print(printBuffer[i].address);
