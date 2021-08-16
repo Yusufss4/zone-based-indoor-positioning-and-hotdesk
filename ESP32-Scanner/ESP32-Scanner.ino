@@ -10,7 +10,7 @@
 #include "BLEScanner.h"
 #include "Globals.h"
 
-#define DATA_SEND 40000 //Per miliseconds
+#define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
 //Change Config File to Connect the MQTT Broker and WiFi
@@ -81,8 +81,8 @@ void reconnectToTheBroker() {
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5) {
-        Serial.print("Rebooting the WiFi connection...");
-        connectToWiFi();
+        Serial.print("Rebooting the device...");
+        ESP.restart();
       }
     }
     delay(500);
@@ -201,9 +201,10 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
 
   payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  //result = client.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
+  //int result = mqttClient.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
   //Serial.print("PUB Result: ");
   //Serial.println(result);
+  mqttClient.publish("/o1/m1/esp32-1/info", "test");
 }
 
 void publishDeviceInfoToMQTT() {
