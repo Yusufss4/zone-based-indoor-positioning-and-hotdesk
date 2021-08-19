@@ -44,7 +44,7 @@ const char* ca_cert = \
 #define MQTT_PASSWORD "academy2021"
 
 /* ALWAYS CHANGE!!*/
-#define CLIENT_ID "ESP32Client-MeetingRoom"
+#define CLIENT_ID "Yusuf-ESP8266Client-Kitchen"
 
 
 #endif /* IOT_CONFIGS_H */

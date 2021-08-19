@@ -8,8 +8,6 @@
 #include <PubSubClient.h>
 
 //Bluetooth Scan
-#include "BLEScanner.h"
-#include "Globals.h"
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
@@ -23,8 +21,6 @@ unsigned long last_time = 0;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-uint8_t bufferIndex = 0; // Found devices counter
-BeaconData buffer[BUFFER_SIZE];
 uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
 
 
@@ -36,7 +32,6 @@ void connectToWiFi() {
   Serial.print("Connected to the WiFi.");
 }
 
-#ifndef ESP32-SCANNER
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Callback - ");
   Serial.print("Message:");
@@ -45,15 +40,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
   Serial.print("\n");
 }
-#endif
 
 void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
   // set the callback function
-#ifndef ESP32-SCANNER
   mqttClient.setCallback(callback);
-#endif
   mqttClient.setKeepAlive(60);
 }
 
@@ -67,7 +59,6 @@ void setup() {
   //  log_d("Free heap: %d", ESP.getFreeHeap());
   //  log_d("Total PSRAM: %d", ESP.getPsramSize());
   //  log_d("Free PSRAM: %d", ESP.getFreePsram());
-
 }
 
 void reconnectToTheBroker() {
@@ -77,7 +68,7 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("Connected.");
       //subscribe to topic
-      //mqttClient.subscribe("/o1/desk1/esp32-1/cm");
+      mqttClient.subscribe("/o1/desk1/esp32-1/cm");
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -95,99 +86,46 @@ void reconnectToTheBroker() {
 
 void loop() {
 
-  BeaconData uniqueBuffer[BUFFER_SIZE];
-  int numberOfDevicesFound = 0;
-
   if (!mqttClient.connected()) {
     Serial.println("Reconnecting to the broker..");
     reconnectToTheBroker();
   }
-
   mqttClient.loop();
-  //Scan the devices
-  BLEScannerLoop();
-  printBuffer(buffer, bufferIndex);
-
-  /* filterBuffer(buffer,uniqueBuffer,bufferIndex,BUFFER_SIZE); Actually should be like this.
-    But buffer and bufferIndex is global.*/
-  numberOfDevicesFound = filterBuffer(uniqueBuffer, bufferIndex, BUFFER_SIZE);
-
-  Serial.print("Number of devices found: ");
-  Serial.print(numberOfDevicesFound);
-  printBuffer(uniqueBuffer, numberOfDevicesFound);
 
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
-    if (numberOfDevicesFound >= 0) { //We can either send 0 devices, or dont send data.
-      publishScanDataToMQTT(uniqueBuffer, numberOfDevicesFound);
-    }
-
+    publishScanDataToMQTT();
     publishDeviceInfoToMQTT();
 
     last_time = now;
   }
-  bufferIndex = 0; //Reset the buffer.
 
 }
 
-int filterBuffer(BeaconData *filteredBuffer, int localBufferIndex, int bufferSize) {
-  Serial.println("Filtering the buffer....");
-  int deviceCounted[bufferSize] = {0};
-  int numberOfUniqeAdresses = 0;
-  int currentRssi = 0;
-  int i  = 0; int j = 0; int counter = 0;
-  for (j = 0; j < localBufferIndex; j++) {
-    if (!deviceCounted[j])  // Only enter inner-loop if MAC address hasn't been counted already
-    {
-      for (i = 0; i < localBufferIndex; i++) {
-        if (strcmp(buffer[i].address, buffer[j].address) == 0) {
-          counter++; //How many repetation for that mac adress.
-          currentRssi += buffer[i].rssi;
-          deviceCounted[i] = 1;  // Mark device as counted
-        }
-      }
-      numberOfUniqeAdresses++;
-      Serial.print("MAC: ");
-      Serial.print(buffer[j].address);
-      Serial.print(" : COUNTER: ");
-      Serial.println(counter);
-      strcpy(filteredBuffer[numberOfUniqeAdresses - 1].address, buffer[j].address);
-      filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter;
-      counter = 0; currentRssi = 0;
-    }
-  }
-  return numberOfUniqeAdresses;
-}
 
-void printBuffer(BeaconData *printBuffer, int bufferSize) {
-  Serial.println("\nPrinting the buffer...");
-  for (uint8_t i = 0; i < bufferSize; i++) {
-    Serial.print(i);
-    Serial.print(" : ");
-    Serial.print(printBuffer[i].address);
-    Serial.print(" : ");
-    Serial.println(printBuffer[i].rssi);
-  }
-}
+void publishScanDataToMQTT() {
 
-void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
-
-  Serial.print("Publishing the data...");
   String payloadString = "{\"e\":[";
+  Serial.println("Publishing the data...");
   for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
     payloadString += "{\"m\":\"";
     payloadString += String(uniqueBuffer[i].address);
     payloadString += "\",\"r\":\"";
     payloadString += String(uniqueBuffer[i].rssi);
     payloadString += "\"}";
-    if (i < bufferIndex - 1) {
+    if (i < numberOfDevicesFound - 1) {
       payloadString += ',';
     }
   }
   // SenML ends. Add this stations MAC
-  payloadString += "],\"mac\":\"";
-  payloadString += String(WiFi.macAddress()); payloadString += "\"}";
+  payloadString += "]\"}";
+  //    payloadString += "],\"st\":\"";
+  //    payloadString += String(WiFi.macAddress());
+  //    // Add board temperature in fahrenheit
+  //    payloadString += "\",\"t\":\"";
+  //    payloadString += String(40);
+  //    payloadString += "\"}";
 
   // Print and publish payload
   Serial.print("MAX len: ");
@@ -201,11 +139,11 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
 
   payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  int result = mqttClient.publish("/o1/m1/esp32-1/info/yusuf", message_char_buffer, payloadString.length(), false);
+  int result = mqttClient.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
   Serial.print("PUB Result: ");
   Serial.println(result);
   Serial.print("PUB Result: ");
-  // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
+  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info", "test"));
 }
 
 void publishDeviceInfoToMQTT() {

@@ -27,7 +27,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       if (bufferIndex >= BUFFER_SIZE - 2) {
         return;
       }
-      if (advertisedDevice.haveName())
+      if (advertisedDevice.haveName() || advertisedDevice.haveServiceUUID())
       {
         pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
         buffer[bufferIndex].rssi = advertisedDevice.getRSSI();
