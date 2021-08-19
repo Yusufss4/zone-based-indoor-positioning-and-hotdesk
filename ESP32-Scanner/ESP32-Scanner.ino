@@ -13,6 +13,7 @@
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
+#define ONBOARD_LED 2 //Onboard LED used for debugging.
 
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
@@ -63,6 +64,7 @@ void setup() {
   connectToWiFi();
   setupMQTT();
   BLEScannerSetup();
+  pinMode(ONBOARD_LED, OUTPUT);
   //  log_d("Total heap: %d", ESP.getHeapSize());
   //  log_d("Free heap: %d", ESP.getFreeHeap());
   //  log_d("Total PSRAM: %d", ESP.getPsramSize());
@@ -116,6 +118,11 @@ void loop() {
   Serial.print(numberOfDevicesFound);
   printBuffer(uniqueBuffer, numberOfDevicesFound);
 
+  /* -- DEBUG -- */
+  char *myMacAdress = "ac:23:3f:a3:35:68";
+  int threshold = -100;
+  debugIsPeopleInTheRoom(uniqueBuffer, numberOfDevicesFound, myMacAdress, threshold);
+  /* -- DEBUG -- */
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
@@ -204,7 +211,6 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   int result = mqttClient.publish("/o1/m1/esp32-1/info/yusuf", message_char_buffer, payloadString.length(), false);
   Serial.print("PUB Result: ");
   Serial.println(result);
-  Serial.print("PUB Result: ");
   // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
 }
 
@@ -213,4 +219,22 @@ void publishDeviceInfoToMQTT() {
   //result = client.publish("/o1/m1/esp32-1/info", message_char_buffer, payloadString.length(), false);
   //  Serial.print("PUB Result: ");
   //  Serial.println(result);
+}
+
+void debugIsPeopleInTheRoom(BeaconData *uniqueBuffer, int numberOfDevicesFound, char address[17], int threshold) {
+  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
+    if (strcmp(address, uniqueBuffer[i].address) == 0) {
+      Serial.println("Requested address is found");
+      //-100<-70 dont take it.
+      if (uniqueBuffer[i].rssi > threshold) {
+        Serial.println("Requested people found in the room.");
+        digitalWrite(ONBOARD_LED, HIGH);
+        return;
+      }
+    }
+  }
+  Serial.println("Requested people is not in the room.");
+  digitalWrite(ONBOARD_LED, LOW);
+  return;
+
 }
