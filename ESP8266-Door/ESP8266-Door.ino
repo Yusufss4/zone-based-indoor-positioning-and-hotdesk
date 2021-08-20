@@ -2,6 +2,8 @@
 //This code is for Meeting or Kitchen ESP32s Scanning Gateway
 //Topic list included in - https://docs.google.com/document/d/1ixmkAzqzE-u8imwFLdVT4XZ1hFTCaz8fN4PDlNe0_3w/edit?usp=sharing
 
+//Device MAC Address: F4:CF:A2:EF:B9:9E
+
 //MQTT and WiFi
 //#include <WiFiClientSecure.h>
 #include <ESP8266WiFi.h>
@@ -38,10 +40,15 @@ void connectToWiFi() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
+
+
+  //strcpy(DeviceMacAdress,WiFi.macAddress());
+
+
   Serial.print("Callback - ");
   Serial.print("Message:");
   //String messageTemp;
-  char messageTemp[MAX_STRING_SIZE*NUMBER_OF_STRING];
+  char messageTemp[MAX_STRING_SIZE * NUMBER_OF_STRING];
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
     //messageTemp += (char)payload[i];
@@ -51,15 +58,45 @@ void callback(char* topic, byte* payload, unsigned int length) {
   messageTemp[length] = '\0';
   Serial.print("\n");
 
- // Check if the MQTT message was received on topic esp32/relay1
- if (strcmp(topic, "/nrom/yusuf") == 0) {
-  Serial.println("Detected message at the topic nrom");
-  
- }
- if (strcmp(topic, "/next-event/yusuf") == 0) {
-   Serial.println("Detected message at the topic next-event");
- }
- Serial.println(messageTemp);
+  char *delimeter = ";";
+
+  /* -- Getting MacAddresses from both Device and Message -- */
+  char messageMacAddress[17];
+  strcpy(messageMacAddress, strtok(messageTemp, delimeter));
+  char deviceMacAddress[18];
+  String getMAC = WiFi.macAddress();
+  strcpy(deviceMacAddress, getMAC.c_str());
+
+  char UUID[32];
+  char eventStatus[10];
+  char eventTime[6];
+  int numOfPeopleInTheRoom = 0;
+  int capacityOfRoom = 6;
+
+  if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
+    // Check if the MQTT message was received on topic esp32/relay1
+    if (strcmp(topic, "/nrom/yusuf") == 0) {
+      Serial.println("Detected message at the topic nrom");
+      numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
+      changeLedStatus(numOfPeopleInTheRoom,capacityOfRoom);
+
+      Serial.print("numOfPeopleInTheRoom: "); Serial.println(numOfPeopleInTheRoom);
+    }
+    if (strcmp(topic, "/next-event/yusuf") == 0) {
+      Serial.println("Detected message at the topic next-event");
+      strcpy(UUID, strtok(NULL, delimeter));
+      strcpy(eventStatus, strtok(NULL, delimeter));
+      strcpy(eventTime, strtok(NULL, delimeter));
+      
+      Serial.print("UUID: "); Serial.println(UUID);
+      Serial.print("eventStatus: "); Serial.println(eventStatus);
+      Serial.print("eventTime: "); Serial.println(eventTime);
+    }
+  }
+  else {
+    Serial.println("Different device");
+  }
+
 }
 
 void setupMQTT() {
@@ -116,6 +153,8 @@ void loop() {
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
+    //Serial.print("Device Mac Address: ");
+    //Serial.println(WiFi.macAddress());
     publishScanDataToMQTT();
     publishDeviceInfoToMQTT();
     last_time = now;
@@ -126,42 +165,42 @@ void loop() {
 
 void publishScanDataToMQTT() {
 
-//  String payloadString = "{\"e\":[";
-//  Serial.println("Publishing the data...");
-//  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
-//    payloadString += "{\"m\":\"";
-//    payloadString += String(uniqueBuffer[i].address);
-//    payloadString += "\",\"r\":\"";
-//    payloadString += String(uniqueBuffer[i].rssi);
-//    payloadString += "\"}";
-//    if (i < numberOfDevicesFound - 1) {
-//      payloadString += ',';
-//    }
-//  }
-//  // SenML ends. Add this stations MAC
-//  payloadString += "]\"}";
-//  //    payloadString += "],\"st\":\"";
-//  //    payloadString += String(WiFi.macAddress());
-//  //    // Add board temperature in fahrenheit
-//  //    payloadString += "\",\"t\":\"";
-//  //    payloadString += String(40);
-//  //    payloadString += "\"}";
-//
-//  // Print and publish payload
-//  Serial.print("MAX len: ");
-//  Serial.println(MQTT_MAX_PACKET_SIZE);
-//
-//  Serial.print("Payload length: ");
-//  Serial.println(payloadString.length());
-//  Serial.println(payloadString);
-//
-//  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
-//  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
-//
-//  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-//  int result = mqttClient.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
-//  Serial.print("PUB Result: ");
-//  Serial.println(result);
+  //  String payloadString = "{\"e\":[";
+  //  Serial.println("Publishing the data...");
+  //  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
+  //    payloadString += "{\"m\":\"";
+  //    payloadString += String(uniqueBuffer[i].address);
+  //    payloadString += "\",\"r\":\"";
+  //    payloadString += String(uniqueBuffer[i].rssi);
+  //    payloadString += "\"}";
+  //    if (i < numberOfDevicesFound - 1) {
+  //      payloadString += ',';
+  //    }
+  //  }
+  //  // SenML ends. Add this stations MAC
+  //  payloadString += "]\"}";
+  //  //    payloadString += "],\"st\":\"";
+  //  //    payloadString += String(WiFi.macAddress());
+  //  //    // Add board temperature in fahrenheit
+  //  //    payloadString += "\",\"t\":\"";
+  //  //    payloadString += String(40);
+  //  //    payloadString += "\"}";
+  //
+  //  // Print and publish payload
+  //  Serial.print("MAX len: ");
+  //  Serial.println(MQTT_MAX_PACKET_SIZE);
+  //
+  //  Serial.print("Payload length: ");
+  //  Serial.println(payloadString.length());
+  //  Serial.println(payloadString);
+  //
+  //  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+  //  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
+  //
+  //  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+  //  int result = mqttClient.publish("/o1/m1/esp32-1/scn-dvc", message_char_buffer, payloadString.length(), false);
+  //  Serial.print("PUB Result: ");
+  //  Serial.println(result);
   Serial.print("PUB Result: ");
   Serial.println(mqttClient.publish("/o1/m1/esp32-1/info", "test-esp8266"));
 }
@@ -171,4 +210,8 @@ void publishDeviceInfoToMQTT() {
   //result = client.publish("/o1/m1/esp32-1/info", message_char_buffer, payloadString.length(), false);
   //  Serial.print("PUB Result: ");
   //  Serial.println(result);
+}
+
+void changeLedStatus(int numberOfPeople,int capacity) {
+  //Not implemented. 
 }
