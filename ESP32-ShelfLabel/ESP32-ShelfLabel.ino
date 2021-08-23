@@ -1,31 +1,38 @@
+//Change Config File to Connect the MQTT Broker and WiFi
 #include <Arduino.h>
-//This code is for Meeting or Kitchen ESP32s Scanning Gateway
-//Topic list included in - https://docs.google.com/document/d/1ixmkAzqzE-u8imwFLdVT4XZ1hFTCaz8fN4PDlNe0_3w/edit?usp=sharing
-//Device MAC: 84:0D:8E:2C:66:3C
-
-
-//MQTT and WiFi
-//#include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include "MQTT_Config.h"
+#include "BLEDevice.h"
+
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-//Change Config File to Connect the MQTT Broker and WiFi
-#include "MQTT_Config.h"
-
 #define NUMBER_OF_STRING 4
 #define MAX_STRING_SIZE 40
 
-unsigned long last_time = 0;
+static SemaphoreHandle_t barrier;
+static QueueHandle_t message_queue;
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+bool transmit_flag = false;
 
-#include "BLEDevice.h"
-//#include "BLEScan.h"
+typedef struct message {
+  char* device_uuid_val;
+  char* service_uuid_val;
+  char* char_uuid_val;
+  char* employee_id_val;
+}message_t;
+
+// Create the struct
+message_t msg;
+
+// MQTT Callback Data
+static char messageMacAddress[18];
+static char deviceMacAddress[18];
 
 // The remote service we wish to connect to.
 //0000180a-0000-1000-8000-00805f9b34fb
@@ -33,21 +40,17 @@ PubSubClient mqttClient(wifiClient);
 //A9A5941D-1681-14E8-E243-78685AB7D125
 //E54B0001-67F5-479E-8711-B3B99198CE6C
 //e0:5a:5a:c8:36:ac
-static BLEUUID serviceUUID("0000180a-0000-1000-8000-00805f9b34fb");
-static BLEUUID serviceUUID2("e54b0001-67f5-479e-8711-b3b99198ce6c");
-// The characteristic of the remote service we are interested in.
-static BLEUUID    charUUID("e54b0002-67f5-479e-8711-b3b99198ce6c");
+BLEUUID device_uuid("");
+BLEUUID service_uuid("");
+BLEUUID char_uuid("");
 
-static bool flag = true;
-byte newValue = 0x00;
+bool doConnect = false;
+bool connected = false;
+bool doScan = false;
+BLERemoteCharacteristic* pRemoteCharacteristic;
+BLEAdvertisedDevice* myDevice;
 
-static boolean doConnect = false;
-static boolean connected = false;
-static boolean doScan = false;
-static BLERemoteCharacteristic* pRemoteCharacteristic;
-static BLEAdvertisedDevice* myDevice;
-
-static void notifyCallback(
+void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic,
   uint8_t* pData,
   size_t length,
@@ -84,11 +87,11 @@ bool connectToServer() {
   Serial.println(" - Connected to server");
 
   // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(serviceUUID2);
+  BLERemoteService* pRemoteService = pClient->getService(service_uuid);
   //BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
   if (pRemoteService == nullptr) {
     Serial.print("Failed to find our service UUID: ");
-    Serial.println(serviceUUID.toString().c_str());
+    Serial.println(service_uuid.toString().c_str());
     pClient->disconnect();
     return false;
   }
@@ -96,10 +99,10 @@ bool connectToServer() {
 
 
   // Obtain a reference to the characteristic in the service of the remote BLE server.
-  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+  pRemoteCharacteristic = pRemoteService->getCharacteristic(char_uuid);
   if (pRemoteCharacteristic == nullptr) {
     Serial.print("Failed to find our characteristic UUID: ");
-    Serial.println(charUUID.toString().c_str());
+    Serial.println(char_uuid.toString().c_str());
     pClient->disconnect();
     return false;
   }
@@ -118,6 +121,7 @@ bool connectToServer() {
   connected = true;
   return true;
 }
+
 /**
    Scan for BLE servers and find the first one that advertises the service we are looking for.
 */
@@ -130,7 +134,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       Serial.println(advertisedDevice.toString().c_str());
 
       // We have found a device, let us now see if it contains the service we are looking for.
-      if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
+      if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(device_uuid)) {
 
         BLEDevice::getScan()->stop();
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
@@ -141,112 +145,6 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
 
-
-void connectToWiFi() {
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-  Serial.print("Connected to the WiFi.");
-}
-
-
-void callback(char* topic, byte* payload, unsigned int length) {
-
-
-  //strcpy(DeviceMacAdress,WiFi.macAddress());
-
-
-  Serial.print("Callback - ");
-  Serial.print("Message:");
-  //String messageTemp;
-  char messageTemp[MAX_STRING_SIZE * NUMBER_OF_STRING];
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-    //messageTemp += (char)payload[i];
-    //strcat(messageTemp,(char)payload[i]);
-    messageTemp[i] = payload[i];
-  }
-  messageTemp[length] = '\0';
-  Serial.print("\n");
-
-  char *delimeter = ";";
-
-  /* -- Getting MacAddresses from both Device and Message -- */
-  char messageMacAddress[18];
-  strcpy(messageMacAddress, strtok(messageTemp, delimeter));
-  char deviceMacAddress[18];
-  String getMAC = WiFi.macAddress();
-  strcpy(deviceMacAddress, getMAC.c_str());
-
-  Serial.print("deviceMacAddress: ");
-  Serial.println(deviceMacAddress);
-
-
-  char UUID[32];
-  char eventStatus[10];
-  char eventTime[6];
-  int numOfPeopleInTheRoom = 0;
-  int capacityOfRoom = 6;
-
-  if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
-    // Check if the MQTT message was received on topic esp32/relay1
-    if (strcmp(topic, "/nrom/yusuf") == 0) {
-      Serial.println("Detected message at the topic nrom");
-      numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
-      //changeLedStatus(numOfPeopleInTheRoom, capacityOfRoom);
-
-      Serial.print("numOfPeopleInTheRoom: "); Serial.println(numOfPeopleInTheRoom);
-    }
-    if (strcmp(topic, "/next-event/yusuf") == 0) {
-      Serial.println("Detected message at the topic next-event");
-      strcpy(UUID, strtok(NULL, delimeter));
-      strcpy(eventStatus, strtok(NULL, delimeter));
-      strcpy(eventTime, strtok(NULL, delimeter));
-
-      Serial.print("UUID: "); Serial.println(UUID);
-      Serial.print("eventStatus: "); Serial.println(eventStatus);
-      Serial.print("eventTime: "); Serial.println(eventTime);
-    }
-  }
-  else {
-    Serial.println("Different device");
-  }
-
-}
-
-void setupMQTT() {
-  //wifiClient.setCACert(ca_cert);
-  mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
-  // set the callback function
-  mqttClient.setCallback(callback);
-  mqttClient.setKeepAlive(60);
-}
-
-
-void setup() {
-  Serial.begin(115200);
-  connectToWiFi();
-  setupMQTT();
-  //  log_d("Total heap: %d", ESP.getHeapSize());
-  //  log_d("Free heap: %d", ESP.getFreeHeap());
-  //  log_d("Total PSRAM: %d", ESP.getPsramSize());
-  //  log_d("Free PSRAM: %d", ESP.getFreePsram());
-  Serial.println("Starting Arduino BLE Client application...");
-  BLEDevice::init("");
-
-  // Retrieve a Scanner and set the callback we want to use to be informed when we
-  // have detected a new device.  Specify that we want active scanning and start the
-  // scan to run for 5 seconds.
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-  pBLEScan->setInterval(1349);
-  pBLEScan->setWindow(449);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->start(5, false);
-
-}
-
 void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
@@ -255,7 +153,7 @@ void reconnectToTheBroker() {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
       //mqttClient.subscribe("/nrom/yusuf");
-      mqttClient.subscribe("/next-event/yusuf");
+      mqttClient.subscribe("/name/yusuf");
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -270,99 +168,206 @@ void reconnectToTheBroker() {
   }
 }
 
-
-void loop() {
-
-
-  if (!mqttClient.connected()) {
-    Serial.println("Reconnecting to the broker..");
-    reconnectToTheBroker();
+void connectToWiFi() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
   }
-  mqttClient.loop();
-
-  if (doConnect == true) {
-    if (connectToServer()) {
-      Serial.println("We are now connected to the BLE Server.");
-    } else {
-      Serial.println("We have failed to connect to the server; there is nothin more we will do.");
-    }
-    doConnect = false;
-  }
-  else {
-    Serial.println("doConnect = false");
-  }
-
-
-
-  unsigned long now = millis();
-  if (now - last_time > DATA_SEND) {
-
-    publishScanDataToMQTT();
-    publishDeviceInfoToMQTT();
-
-    if (connected) {
-      String newString = "--ATA";
-      //newValue = (newValue + 0x01) %3;
-      Serial.println("Setting new characteristic value..");
-      //Serial.println(newValue);
-      Serial.println(newString);
-
-      // Set the characteristic's value to be the array of bytes that is actually a string.
-      pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
-
-      //if(flag) {
-      //pRemoteCharacteristic->writeValue(newValue);
-      //flag = false
-      //}
-    } else if (doScan) {
-      BLEDevice::getScan()->start(5,false);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
-    }
-
-    last_time = now;
-  }
-
+  Serial.print("Connected to the WiFi.");
 }
 
 
-void publishScanDataToMQTT() {
+void callback(char* topic, byte* payload, unsigned int length) {
 
-  //  Serial.print("Publishing the data...");
-  //  String payloadString = "{\"e\":[";
-  //  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
-  //    payloadString += "{\"m\":\"";
-  //    payloadString += String(uniqueBuffer[i].address);
-  //    payloadString += "\",\"r\":\"";
-  //    payloadString += String(uniqueBuffer[i].rssi);
-  //    payloadString += "\"}";
-  //    if (i < bufferIndex - 1) {
-  //      payloadString += ',';
-  //    }
-  //  }
-  //  // SenML ends. Add this stations MAC
-  //  payloadString += "],\"mac\":\"";
-  //  payloadString += String(WiFi.macAddress()); payloadString += "\"}";
-  //
-  //  // Print and publish payload
-  //  Serial.print("MAX len: ");
-  //  Serial.println(MQTT_MAX_PACKET_SIZE);
-  //
-  //  Serial.print("Payload length: ");
-  //  Serial.println(payloadString.length());
-  //  Serial.println(payloadString);
-  //
-  //  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
-  //  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
-  //
-  //  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  //  int result = mqttClient.publish("/o1/m1/esp32-1/info/yusuf", message_char_buffer, payloadString.length(), false);
-  //  Serial.print("PUB Result: ");
-  //  Serial.println(result);
+  Serial.print("Callback - ");
+  Serial.print("Message:");
+
+  char messageTemp[MAX_STRING_SIZE * NUMBER_OF_STRING];
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+    messageTemp[i] = payload[i];
+  }
+  messageTemp[length] = '\0';
+  Serial.print("\n");
+
+  const char *delimeter = ";";
+
+  /* -- Getting MacAddresses from both Device and Message -- */
+  strcpy(messageMacAddress, strtok(messageTemp, delimeter));
+  String getMAC = WiFi.macAddress();
+  strcpy(deviceMacAddress, getMAC.c_str());
+
+  Serial.print("deviceMacAddress: ");
+  Serial.println(deviceMacAddress);
+
+  if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
+    if (strcmp(topic, "/name/yusuf") == 0) {
+      Serial.println("Detected message at the topic name");
+      strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
+      strcpy(msg.service_uuid_val, strtok(NULL, delimeter));
+      strcpy(msg.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(msg.employee_id_val, strtok(NULL, delimeter));
+
+      Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
+      Serial.print("Service uuid: "); Serial.println(msg.service_uuid_val);
+      Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
+      Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
+
+      // Transmit the message data to queue.
+      transmit_flag = true;
+    }
+  }
+  else {
+    Serial.println("Different device");
+  }
+}
+
+void setupMQTT() {
+  //wifiClient.setCACert(ca_cert);
+  mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
+  // set the callback function
+  mqttClient.setCallback(callback);
+  mqttClient.setKeepAlive(60);
+}
+
+void publishScanDataToMQTT() {
   Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
 }
 
 void publishDeviceInfoToMQTT() {
-  //Not implemented. Temp and humidity.
-  //result = client.publish("/o1/m1/esp32-1/info", message_char_buffer, payloadString.length(), false);
-  //  Serial.print("PUB Result: ");
-  //  Serial.println(result);
+}
+
+
+// TODO 
+
+// Connect to broker.
+// Take the data package.
+// Parse it.
+// Add to the queue struct.
+// Signal to the BLE Task.
+static void listener_task(void *argp)
+{
+  BaseType_t rc;
+  for(;;)
+  {  
+    // Connect to broker
+    if (!mqttClient.connected()) {
+      Serial.println("Reconnecting to the broker..");
+      reconnectToTheBroker();
+    }
+    // Take the data package, parse it.
+    mqttClient.loop();
+    
+    if(transmit_flag == true)
+    {
+      transmit_flag = false;
+      
+      // Signal to ble_task
+      rc = xSemaphoreGive(barrier);
+      // assert(rc == pdPASS);
+    }
+  }
+}
+
+// TODO 
+
+// Take the queue values.
+// Scan the ESL devices. 
+// Connect to ESL according to the UUID value in the Queue.
+// Send the data package. (If the data is bigger than 20 bytes then send it respectively.)
+// Disconnect from device.
+// Signal to the listener task.
+static void ble_task(void *argp)
+{
+  BaseType_t s;
+  BaseType_t rc;
+
+  for(;;)
+  {
+    rc = xSemaphoreTake(barrier, portMAX_DELAY);
+    assert(rc == pdPASS);
+    
+    // Transmit to BLEUUID
+    BLEUUID device_uuid(msg.device_uuid_val);
+    BLEUUID service_uuid(msg.service_uuid_val);
+    BLEUUID char_uuid(msg.char_uuid_val);
+
+    // Scan the BLE devices.
+    BLEScan* pBLEScan = BLEDevice::getScan();
+
+    // Connect to ESL according to the UUID value in the Queue.
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setInterval(1349);
+    pBLEScan->setWindow(449);
+    pBLEScan->setActiveScan(true);
+    pBLEScan->start(5, false);
+
+    if (doConnect == true) {
+      if (connectToServer()) {
+        Serial.println("We are now connected to the BLE Server.");
+      } else {
+        Serial.println("We have failed to connect to the server; there is nothin more we will do.");
+      }
+      doConnect = false;
+    }
+    else {
+      Serial.println("doConnect = false");
+    }
+
+    if (connected) {
+      String newString = msg.employee_id_val;
+      Serial.println("Setting new characteristic value..");
+      Serial.println(newString);
+
+      // Set the characteristic's value to be the array of bytes that is actually a string.
+      pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+    } 
+  }
+}
+
+void setup() 
+{
+  int app_cpu = xPortGetCoreID();
+  TaskHandle_t h;
+  BaseType_t rc;
+
+  barrier = xSemaphoreCreateBinary();
+  assert(barrier);
+
+  Serial.begin(115200);
+  connectToWiFi();
+  setupMQTT();
+  Serial.println("Starting Arduino BLE Client application...");
+  BLEDevice::init("");
+
+  delay(2000);  // Allow USB to connect
+
+  rc = xTaskCreatePinnedToCore(
+    listener_task,
+    "listenertask",
+    5000,   // Stack Size
+    nullptr,
+    1,      // Priortiy
+    &h,     // Task Handle
+    app_cpu // CPU
+  );
+  assert(rc == pdPASS);
+  assert(h);
+
+  rc = xTaskCreatePinnedToCore(
+    ble_task,
+    "bletask",
+    5000,   // Stack Size
+    nullptr,
+    1,      // Priortiy
+    &h,     // Task Handle
+    app_cpu // CPU
+  );
+  assert(rc == pdPASS);
+  assert(h);
+}
+
+void loop() 
+{
+  vTaskDelete(nullptr);
 }
