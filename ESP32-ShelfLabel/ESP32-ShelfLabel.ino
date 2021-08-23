@@ -9,11 +9,14 @@
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-#define NUMBER_OF_STRING 4
+#define MESSAGE_SIZE 37
+
+#define NUMBER_OF_STRING 5
 #define MAX_STRING_SIZE 40
 
+#define TaskStack10k 10000
+
 static SemaphoreHandle_t barrier;
-static QueueHandle_t message_queue;
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
@@ -21,10 +24,10 @@ PubSubClient mqttClient(wifiClient);
 bool transmit_flag = false;
 
 typedef struct message {
-  char* device_uuid_val;
-  char* service_uuid_val;
-  char* char_uuid_val;
-  char* employee_id_val;
+  char device_uuid_val[MESSAGE_SIZE];
+  char service_uuid_val[MESSAGE_SIZE];
+  char char_uuid_val[MESSAGE_SIZE];
+  char employee_id_val[MESSAGE_SIZE];
 }message_t;
 
 // Create the struct
@@ -40,9 +43,9 @@ static char deviceMacAddress[18];
 //A9A5941D-1681-14E8-E243-78685AB7D125
 //E54B0001-67F5-479E-8711-B3B99198CE6C
 //e0:5a:5a:c8:36:ac
-BLEUUID device_uuid("");
-BLEUUID service_uuid("");
-BLEUUID char_uuid("");
+BLEUUID device_uuid(msg.device_uuid_val);
+BLEUUID service_uuid(msg.service_uuid_val);
+BLEUUID char_uuid(msg.char_uuid_val);
 
 bool doConnect = false;
 bool connected = false;
@@ -190,7 +193,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   messageTemp[length] = '\0';
   Serial.print("\n");
 
-  const char *delimeter = ";";
+  char *delimeter = ";";
 
   /* -- Getting MacAddresses from both Device and Message -- */
   strcpy(messageMacAddress, strtok(messageTemp, delimeter));
@@ -250,6 +253,7 @@ static void listener_task(void *argp)
   BaseType_t rc;
   for(;;)
   {  
+    //Serial.println("Listener Task");
     // Connect to broker
     if (!mqttClient.connected()) {
       Serial.println("Reconnecting to the broker..");
@@ -260,6 +264,7 @@ static void listener_task(void *argp)
     
     if(transmit_flag == true)
     {
+      Serial.println("Signaling to BLE Task");
       transmit_flag = false;
       
       // Signal to ble_task
@@ -286,11 +291,16 @@ static void ble_task(void *argp)
   {
     rc = xSemaphoreTake(barrier, portMAX_DELAY);
     assert(rc == pdPASS);
+
+    Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
+    Serial.print("Service uuid: "); Serial.println(msg.service_uuid_val);
+    Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
+    Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
     
     // Transmit to BLEUUID
-    BLEUUID device_uuid(msg.device_uuid_val);
-    BLEUUID service_uuid(msg.service_uuid_val);
-    BLEUUID char_uuid(msg.char_uuid_val);
+    device_uuid = BLEUUID(msg.device_uuid_val);
+    service_uuid = BLEUUID(msg.service_uuid_val);
+    char_uuid = BLEUUID(msg.char_uuid_val);
 
     // Scan the BLE devices.
     BLEScan* pBLEScan = BLEDevice::getScan();
@@ -321,7 +331,8 @@ static void ble_task(void *argp)
 
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
-    } 
+    }
+    delay(2000);  // Allow USB to connect 
   }
 }
 
@@ -337,6 +348,8 @@ void setup()
   Serial.begin(115200);
   connectToWiFi();
   setupMQTT();
+  Serial.println("app_cpu = ");
+  Serial.println(app_cpu);
   Serial.println("Starting Arduino BLE Client application...");
   BLEDevice::init("");
 
@@ -345,7 +358,7 @@ void setup()
   rc = xTaskCreatePinnedToCore(
     listener_task,
     "listenertask",
-    5000,   // Stack Size
+    TaskStack10k,   // Stack Size
     nullptr,
     1,      // Priortiy
     &h,     // Task Handle
@@ -357,7 +370,7 @@ void setup()
   rc = xTaskCreatePinnedToCore(
     ble_task,
     "bletask",
-    5000,   // Stack Size
+    TaskStack10k,   // Stack Size
     nullptr,
     1,      // Priortiy
     &h,     // Task Handle
