@@ -332,6 +332,7 @@ static void ble_task(void *argp)
 
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+      pClient->disconnect();
     }
     delay(2000);  // Allow USB to connect 
   }
