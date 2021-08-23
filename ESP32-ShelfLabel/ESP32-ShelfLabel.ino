@@ -9,7 +9,7 @@
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-#define NUMBER_OF_STRING 4
+#define NUMBER_OF_STRING 5
 #define MAX_STRING_SIZE 40
 
 static SemaphoreHandle_t barrier;
@@ -21,10 +21,10 @@ PubSubClient mqttClient(wifiClient);
 bool transmit_flag = false;
 
 typedef struct message {
-  char* device_uuid_val;
-  char* service_uuid_val;
-  char* char_uuid_val;
-  char* employee_id_val;
+  char device_uuid_val[37];
+  char service_uuid_val[37];
+  char char_uuid_val[37];
+  char employee_id_val[37];
 }message_t;
 
 // Create the struct
@@ -132,10 +132,12 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
       Serial.print("BLE Advertised Device found: ");
       Serial.println(advertisedDevice.toString().c_str());
+      //Serial.print("Was looking for uuid:");
+      //Serial.print(device_uuid);
 
       // We have found a device, let us now see if it contains the service we are looking for.
       if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(device_uuid)) {
-
+        Serial.print("===Found ESL with matching device UUID==");
         BLEDevice::getScan()->stop();
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
         doConnect = true;
@@ -153,7 +155,7 @@ void reconnectToTheBroker() {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
       //mqttClient.subscribe("/nrom/yusuf");
-      mqttClient.subscribe("/name/yusuf");
+      mqttClient.subscribe("/name/ata");
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -201,7 +203,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(deviceMacAddress);
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
-    if (strcmp(topic, "/name/yusuf") == 0) {
+    if (strcmp(topic, "/name/ata") == 0) {
       Serial.println("Detected message at the topic name");
       strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
       strcpy(msg.service_uuid_val, strtok(NULL, delimeter));
@@ -212,6 +214,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Service uuid: "); Serial.println(msg.service_uuid_val);
       Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
+      
 
       // Transmit the message data to queue.
       transmit_flag = true;
@@ -231,7 +234,7 @@ void setupMQTT() {
 }
 
 void publishScanDataToMQTT() {
-  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
+  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/ata", "test"));
 }
 
 void publishDeviceInfoToMQTT() {
@@ -288,9 +291,9 @@ static void ble_task(void *argp)
     assert(rc == pdPASS);
     
     // Transmit to BLEUUID
-    BLEUUID device_uuid(msg.device_uuid_val);
-    BLEUUID service_uuid(msg.service_uuid_val);
-    BLEUUID char_uuid(msg.char_uuid_val);
+    device_uuid = BLEUUID(msg.device_uuid_val);
+    service_uuid = BLEUUID(msg.service_uuid_val);
+    char_uuid = BLEUUID(msg.char_uuid_val);
 
     // Scan the BLE devices.
     BLEScan* pBLEScan = BLEDevice::getScan();
