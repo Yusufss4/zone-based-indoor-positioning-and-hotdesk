@@ -23,6 +23,8 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 bool transmit_flag = false;
 
+BLEClient* pClient = BLEDevice::createClient();
+
 typedef struct message {
   char device_uuid_val[MESSAGE_SIZE];
   char service_uuid_val[MESSAGE_SIZE];
@@ -80,7 +82,6 @@ bool connectToServer() {
   Serial.print("Forming a connection to ");
   Serial.println(myDevice->getAddress().toString().c_str());
 
-  BLEClient*  pClient  = BLEDevice::createClient();
   Serial.println(" - Created client");
 
   pClient->setClientCallbacks(new MyClientCallback());
@@ -310,7 +311,7 @@ static void ble_task(void *argp)
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
-    pBLEScan->start(5, false);
+    pBLEScan->start(15, false);
 
     if (doConnect == true) {
       if (connectToServer()) {
