@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "SUPERONLINE_WiFi_5918"
-#define WIFI_PASSWORD        "V9dp6ACGgxjE"
+#define WIFI_SSID            "LionGate"
+#define WIFI_PASSWORD        "LBR7F6YBXW2417!'"
 
 
 /* Dont Change !*/
@@ -42,7 +42,6 @@ const char* ca_cert = \
 #define MQTT_PASSWORD "academy2021"
 
 /* ALWAYS CHANGE!!*/
-#define CLIENT_ID "ESP32Client-ShelfLabel-Yusuf"
-
+#define CLIENT_ID "ESP32Client-ShelfLabel-Berkay"
 
 #endif /* IOT_CONFIGS_H */
