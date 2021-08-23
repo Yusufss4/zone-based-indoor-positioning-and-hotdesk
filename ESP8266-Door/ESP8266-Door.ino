@@ -9,7 +9,14 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-//Bluetooth Scan
+
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+#include <avr/power.h>
+#endif
+#define NEOPIXEL_PIN 13
+#define PIXEL_COUNT 12
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
@@ -71,14 +78,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
   char eventStatus[10];
   char eventTime[6];
   int numOfPeopleInTheRoom = 0;
-  int capacityOfRoom = 6;
+  int capacityOfRoom = 0;
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     // Check if the MQTT message was received on topic esp32/relay1
     if (strcmp(topic, "/nrom/yusuf") == 0) {
       Serial.println("Detected message at the topic nrom");
       numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
-      changeLedStatus(numOfPeopleInTheRoom,capacityOfRoom);
+      capacityOfRoom = atoi(strtok(NULL, delimeter));
+
+      uint32_t orange = strip.Color(255, 69, 0);
+      uint32_t black = strip.Color(0, 0, 0);
+      uint32_t blue = strip.Color(0, 0, 255);
+      uint32_t red = strip.Color(255, 0, 0);
+      //changeLedStatusV1(orange, black, red, numOfPeopleInTheRoom, capacityOfRoom);
+      changeLedStatusV2(orange, black, red, numOfPeopleInTheRoom, capacityOfRoom);
 
       Serial.print("numOfPeopleInTheRoom: "); Serial.println(numOfPeopleInTheRoom);
     }
@@ -87,7 +101,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       strcpy(UUID, strtok(NULL, delimeter));
       strcpy(eventStatus, strtok(NULL, delimeter));
       strcpy(eventTime, strtok(NULL, delimeter));
-      
+
       Serial.print("UUID: "); Serial.println(UUID);
       Serial.print("eventStatus: "); Serial.println(eventStatus);
       Serial.print("eventTime: "); Serial.println(eventTime);
@@ -112,6 +126,9 @@ void setup() {
   Serial.begin(9600);
   connectToWiFi();
   setupMQTT();
+  strip.begin();
+  strip.setBrightness(50);
+  strip.show();
   //  log_d("Total heap: %d", ESP.getHeapSize());
   //  log_d("Free heap: %d", ESP.getFreeHeap());
   //  log_d("Total PSRAM: %d", ESP.getPsramSize());
@@ -212,6 +229,60 @@ void publishDeviceInfoToMQTT() {
   //  Serial.println(result);
 }
 
-void changeLedStatus(int numberOfPeople,int capacity) {
-  //Not implemented. 
+void changeLedStatusV1(uint32_t innerColor, uint32_t outerColor, uint32_t warningColor, int numOfPeople, int capacity) {
+
+  //Calculate the capacity and increase the number of led per person.
+
+  int ledPerPerson = (strip.numPixels() / capacity);
+  Serial.print("\nLed Per People : ");
+  Serial.println(ledPerPerson);
+
+  if (numOfPeople >= capacity) {
+    Serial.println("Room is full");
+    strip.fill(warningColor);
+    strip.show();
+    return;
+  }
+
+  uint8_t wait = 0;
+  if (numOfPeople == 0) {
+    strip.fill(outerColor);
+    strip.show();
+  }
+  else {
+    int ledNumber = 0;
+    strip.clear();  //will change later.
+    strip.fill(outerColor, ledNumber, 0);
+    for (int i = 0; i < numOfPeople; i++) {
+      for (int j = 0; j < ledPerPerson; j++) {
+        strip.setPixelColor(ledNumber, innerColor);
+        ledNumber++;
+      }
+
+    }
+    strip.show();
+  }
+
+}
+
+void changeLedStatusV2(uint32_t innerColor, uint32_t outerColor, uint32_t warningColor, int numOfPeople, int capacity) {
+  //1 led per person, if the capacity is reached all warningColor.
+
+  if (numOfPeople >= capacity) {
+    Serial.println("Room is full");
+    strip.fill(warningColor);
+    strip.show();
+    return;
+  }
+  if (numOfPeople == 0) {
+    strip.fill(outerColor);
+    strip.show();
+  }
+  else {
+    strip.fill(outerColor, numOfPeople - 1, strip.numPixels());
+    for (uint16_t i = 0; i < numOfPeople; i++) {
+      strip.setPixelColor(i, innerColor);
+    }
+    strip.show();
+  }
 }

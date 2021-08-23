@@ -18,23 +18,23 @@ void setup() {
 }
 
 void loop() {
- 
+
   uint32_t orange = strip.Color(255, 69, 0);
   uint32_t black = strip.Color(0, 0, 0);
   uint32_t blue = strip.Color(0, 0, 255);
   uint32_t red = strip.Color(255, 0, 0);
   uint32_t capacityOfRoom = 6;
-  
+
   Serial.println("\n1st Loop");
   capacityOfRoom = 12;
   for (uint16_t numOfPeople = 0; numOfPeople <= 12; numOfPeople++) {
     changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
   }
-  
+
   Serial.println("\n2nd Loop");
   capacityOfRoom = 12;
   for (uint16_t numOfPeople = 12; numOfPeople > 0; numOfPeople--) {
-   changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
+    changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
   }
 
   Serial.println("\n3th Loop");
@@ -42,11 +42,11 @@ void loop() {
   for (uint16_t numOfPeople = 0; numOfPeople <= 12; numOfPeople++) {
     changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
   }
-  
+
   Serial.println("\n4th Loop");
   capacityOfRoom = 6;
   for (uint16_t numOfPeople = 12; numOfPeople > 0; numOfPeople--) {
-   changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
+    changeLedStatus(orange, black, red, numOfPeople, capacityOfRoom);
   }
 
   Serial.println("\n5th Loop");
@@ -87,8 +87,8 @@ void changeLedStatus(uint32_t innerColor, uint32_t outerColor, uint32_t warningC
   int ledPerPerson = (strip.numPixels() / capacity);
   Serial.print("\nLed Per People : ");
   Serial.println(ledPerPerson);
-  
-  if(numOfPeople >= capacity) {
+
+  if (numOfPeople >= capacity) {
     Serial.println("Room is full");
     strip.fill(warningColor);
     strip.show();
