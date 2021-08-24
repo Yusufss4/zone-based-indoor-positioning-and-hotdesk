@@ -16,7 +16,7 @@
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 NeoPixel DoorLight;
 
-#define DATA_SEND 5000 //Per miliseconds
+#define DATA_SEND_DELAY 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
 //Callback
@@ -26,11 +26,20 @@ NeoPixel DoorLight;
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
 
-unsigned long last_time = 0;
+unsigned long lastSendTime = 0;
+
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+
+//Temp and Humidity
+#include <DHT.h>
+#define DHTPIN 15
+#define DHTTYPE DHT11
+#define SAMPLE_DELAY 10000
+DHT dht(DHTPIN, DHTTYPE);
+unsigned long lastSampleTime = 0;
 
 uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
 
@@ -80,7 +89,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     // Check if the MQTT message was received on topic esp32/relay1
-    if (strcmp(topic, "/nrom/yusuf") == 0) {
+    if (strcmp(topic, "/nrom") == 0) {
       Serial.println("Detected message at the topic nrom");
       numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
       capacityOfRoom = atoi(strtok(NULL, delimeter));
@@ -125,6 +134,7 @@ void setup() {
   connectToWiFi();
   setupMQTT();
   DoorLight.setupNeoPixel();
+  dht.begin();
 }
 
 void reconnectToTheBroker() {
@@ -134,7 +144,7 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("Connected.");
       //subscribe to topic
-      mqttClient.subscribe("/nrom/yusuf");
+      mqttClient.subscribe("/nrom");
       mqttClient.subscribe("/next-event/yusuf");
     }
     else {
@@ -159,16 +169,27 @@ void loop() {
   }
   mqttClient.loop();
 
-
-  unsigned long now = millis();
-  if (now - last_time > DATA_SEND) {
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastSendTime > DATA_SEND_DELAY) {
     //Serial.print("Device Mac Address: ");
     //Serial.println(WiFi.macAddress());
     publishScanDataToMQTT();
     publishDeviceInfoToMQTT();
-    last_time = now;
+    lastSendTime = currentMillis;
   }
 
+  if (currentMillis - lastSampleTime >= SAMPLE_DELAY) {
+    float humidity = 0;
+    float temperature = 0;
+    if (readTempAndHumidity(&humidity, &temperature) == 1) {
+      publishTempAndHumidityDataToMQTT(&humidity, &temperature);
+    }
+    else
+    {
+      Serial.println(F("Failed to read from DHT sensor!"));
+    }
+    lastSampleTime = currentMillis;
+  }
 }
 
 
@@ -179,4 +200,32 @@ void publishScanDataToMQTT() {
 
 void publishDeviceInfoToMQTT() {
   //Not implemented. Temp and humidity.
+}
+
+int readTempAndHumidity(float *humidity, float *temperature) {
+  *humidity = dht.readHumidity();
+  *temperature = dht.readTemperature();
+  if (isnan(*humidity) || isnan(*temperature)) {
+    Serial.println(F("Failed to read from DHT sensor!!"));
+    return -1;
+  }
+  else {
+    return 1;
+  }
+}
+
+void publishTempAndHumidityDataToMQTT(float *humidity, float *temperature) {
+  int result = 0;
+  String payload = "{ \"mac\":\"";
+  payload += WiFi.macAddress();
+  payload += "\",\"temp\":";
+  payload += String(*temperature).c_str();
+  payload += ",\"hmd\":";
+  payload += String(*humidity).c_str();
+  payload += "}";
+
+  //convert string to byte and publish
+  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+  payload.getBytes(messageCharBuffer, payload.length() + 1);
+  result = mqttClient.publish("/temp-hmd", messageCharBuffer, payload.length(), false);
 }
