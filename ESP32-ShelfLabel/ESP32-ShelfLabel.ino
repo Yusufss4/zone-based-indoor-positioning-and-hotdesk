@@ -42,6 +42,8 @@ static char deviceMacAddress[18];
 //A9A5941D-1681-14E8-E243-78685AB7D125
 //E54B0001-67F5-479E-8711-B3B99198CE6C
 //e0:5a:5a:c8:36:ac
+//3c:71:bf:f5:5d:58
+
 BLEUUID device_uuid("");
 BLEUUID service_uuid("");
 BLEUUID char_uuid("");
@@ -160,6 +162,7 @@ void reconnectToTheBroker() {
       mqttClient.subscribe("/name/ata");
     }
     else {
+      //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
@@ -313,10 +316,14 @@ static void ble_task(void *argp)
       } else {
         Serial.println("We have failed to connect to the server; there is nothin more we will do.");
       }
+      
       doConnect = false;
     }
     else {
       Serial.println("doConnect = false");
+
+      
+      Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
     }
 
     if (connected) {

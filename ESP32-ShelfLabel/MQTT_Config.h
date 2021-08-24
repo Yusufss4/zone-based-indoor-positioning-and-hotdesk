@@ -2,8 +2,11 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "L4"
-#define WIFI_PASSWORD        "baaaaaaa"
+#define WIFI_SSID            "Borda Guest"
+#define WIFI_PASSWORD        "healthcare.next"
+
+//#define WIFI_SSID            "L4"
+//#define WIFI_PASSWORD        "baaaaaaa"
 
 
 /* Dont Change !*/
