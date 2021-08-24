@@ -9,7 +9,7 @@
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-#define NUMBER_OF_STRING 5
+#define NUMBER_OF_STRING 6
 #define MAX_STRING_SIZE 40
 
 static SemaphoreHandle_t barrier;
@@ -22,6 +22,8 @@ bool transmit_flag = false;
 
 BLEClient*  pClient  = BLEDevice::createClient();
 
+bool topic_flag = false; //0 = smartdesk / 1 = smartroom
+
 typedef struct message {
   char device_uuid_val[37];
   char service_uuid_val[37];
@@ -29,8 +31,17 @@ typedef struct message {
   char employee_id_val[37];
 }message_t;
 
+typedef struct event {
+  char device_uuid_val[37];
+  char service_uuid_val[37];
+  char char_uuid_val[37];
+  char event_status_val[37];
+  char event_time_val[37];
+}event_t;
+
 // Create the struct
 message_t msg;
+event_t evt;
 
 // MQTT Callback Data
 static char messageMacAddress[18];
@@ -158,8 +169,8 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
-      //mqttClient.subscribe("/nrom/yusuf");
       mqttClient.subscribe("/name/ata");
+      mqttClient.subscribe("/next-event/ata");
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
@@ -208,7 +219,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(deviceMacAddress);
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
+    //smart desk
     if (strcmp(topic, "/name/ata") == 0) {
+      topic_flag = false;
       Serial.println("Detected message at the topic name");
       strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
       strcpy(msg.service_uuid_val, strtok(NULL, delimeter));
@@ -220,6 +233,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
       
+
+      // Transmit the message data to queue.
+      transmit_flag = true;
+    }
+    //room reservation
+    else if(strcmp(topic, "/next-event/ata") == 0) {
+      topic_flag = true;
+      Serial.println("Detected message at the topic name");
+      strcpy(evt.device_uuid_val, strtok(NULL, delimeter));
+      strcpy(evt.service_uuid_val, strtok(NULL, delimeter));
+      strcpy(evt.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(evt.event_status_val, strtok(NULL, delimeter));
+      strcpy(evt.event_time_val, strtok(NULL, delimeter));
+
+      Serial.print("Device uuid: "); Serial.println(evt.device_uuid_val);
+      Serial.print("Service uuid: "); Serial.println(evt.service_uuid_val);
+      Serial.print("Characteristic uuid: "); Serial.println(evt.char_uuid_val);
+      Serial.print("Event Status: "); Serial.println(evt.event_status_val);
+      Serial.print("Event Time: "); Serial.println(evt.event_time_val);
 
       // Transmit the message data to queue.
       transmit_flag = true;
@@ -236,13 +268,6 @@ void setupMQTT() {
   // set the callback function
   mqttClient.setCallback(callback);
   mqttClient.setKeepAlive(60);
-}
-
-void publishScanDataToMQTT() {
-  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/ata", "test"));
-}
-
-void publishDeviceInfoToMQTT() {
 }
 
 
@@ -296,9 +321,17 @@ static void ble_task(void *argp)
     assert(rc == pdPASS);
     
     // Transmit to BLEUUID
-    device_uuid = BLEUUID(msg.device_uuid_val);
-    service_uuid = BLEUUID(msg.service_uuid_val);
-    char_uuid = BLEUUID(msg.char_uuid_val);
+    if(topic_flag) {
+      device_uuid = BLEUUID(evt.device_uuid_val);
+      service_uuid = BLEUUID(evt.service_uuid_val);
+      char_uuid = BLEUUID(evt.char_uuid_val);
+    }
+    else {
+      device_uuid = BLEUUID(msg.device_uuid_val);
+      service_uuid = BLEUUID(msg.service_uuid_val);
+      char_uuid = BLEUUID(msg.char_uuid_val);
+    }
+
 
     // Scan the BLE devices.
     BLEScan* pBLEScan = BLEDevice::getScan();
@@ -327,10 +360,18 @@ static void ble_task(void *argp)
     }
 
     if (connected) {
-      String newString = msg.employee_id_val;
-      Serial.println("Setting new characteristic value..");
-      Serial.println(newString);
-
+      String newString = "";
+      if(topic_flag) {
+        char* temp;
+        temp = strcat(evt.event_status_val, " ");
+        newString = strcat(temp, evt.event_time_val);
+      }
+      else {
+        newString = msg.employee_id_val;
+        Serial.println("Setting new characteristic value..");
+        Serial.println(newString);
+      }
+      
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
