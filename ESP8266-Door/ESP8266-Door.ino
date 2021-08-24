@@ -9,14 +9,12 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-
-#include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-#include <avr/power.h>
-#endif
+#include "NeoPixel.h"
 #define NEOPIXEL_PIN 13
 #define PIXEL_COUNT 12
+#include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+NeoPixel DoorLight;
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
@@ -92,7 +90,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       uint32_t blue = strip.Color(0, 0, 255);
       uint32_t red = strip.Color(255, 0, 0);
       //changeLedStatusCalculateCapacity(orange, black, red, numOfPeopleInTheRoom, capacityOfRoom);
-      changeLedStatusOneLedPerPerson(orange, black, red, numOfPeopleInTheRoom, capacityOfRoom);
+      DoorLight.changeLedStatusOneLedPerPerson(orange, black, red, numOfPeopleInTheRoom, capacityOfRoom);
 
       Serial.print("numOfPeopleInTheRoom: "); Serial.println(numOfPeopleInTheRoom);
     }
@@ -126,13 +124,7 @@ void setup() {
   Serial.begin(9600);
   connectToWiFi();
   setupMQTT();
-  strip.begin();
-  strip.setBrightness(50);
-  strip.show();
-  //  log_d("Total heap: %d", ESP.getHeapSize());
-  //  log_d("Free heap: %d", ESP.getFreeHeap());
-  //  log_d("Total PSRAM: %d", ESP.getPsramSize());
-  //  log_d("Free PSRAM: %d", ESP.getFreePsram());
+  DoorLight.setupNeoPixel();
 }
 
 void reconnectToTheBroker() {
@@ -187,62 +179,4 @@ void publishScanDataToMQTT() {
 
 void publishDeviceInfoToMQTT() {
   //Not implemented. Temp and humidity.
-}
-
-void changeLedStatusCalculateCapacity(uint32_t innerColor, uint32_t outerColor, uint32_t warningColor, int numOfPeople, int capacity) {
-
-  //Calculate the capacity and increase the number of led per person.
-
-  int ledPerPerson = (strip.numPixels() / capacity);
-  Serial.print("\nLed Per People : ");
-  Serial.println(ledPerPerson);
-
-  if (numOfPeople >= capacity) {
-    Serial.println("Room is full");
-    strip.fill(warningColor);
-    strip.show();
-    return;
-  }
-
-  uint8_t wait = 0;
-  if (numOfPeople == 0) {
-    strip.fill(outerColor);
-    strip.show();
-  }
-  else {
-    int ledNumber = 0;
-    strip.clear();  //will change later.
-    strip.fill(outerColor, ledNumber, 0);
-    for (int i = 0; i < numOfPeople; i++) {
-      for (int j = 0; j < ledPerPerson; j++) {
-        strip.setPixelColor(ledNumber, innerColor);
-        ledNumber++;
-      }
-
-    }
-    strip.show();
-  }
-
-}
-
-void changeLedStatusOneLedPerPerson(uint32_t innerColor, uint32_t outerColor, uint32_t warningColor, int numOfPeople, int capacity) {
-  //1 led per person, if the capacity is reached all warningColor.
-
-  if (numOfPeople >= capacity) {
-    Serial.println("Room is full");
-    strip.fill(warningColor);
-    strip.show();
-    return;
-  }
-  if (numOfPeople == 0) {
-    strip.fill(outerColor);
-    strip.show();
-  }
-  else {
-    strip.fill(outerColor, numOfPeople - 1, strip.numPixels());
-    for (uint16_t i = 0; i < numOfPeople; i++) {
-      strip.setPixelColor(i, innerColor);
-    }
-    strip.show();
-  }
 }
