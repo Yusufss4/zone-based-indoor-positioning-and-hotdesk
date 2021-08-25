@@ -390,7 +390,6 @@ static void ble_task(void *argp)
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
       }
-
       
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
