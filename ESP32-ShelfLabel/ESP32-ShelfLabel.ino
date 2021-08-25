@@ -361,16 +361,27 @@ static void ble_task(void *argp)
 
     if (connected) {
       String newString = "";
+      
       if(topic_flag) {
         char* temp;
-        temp = strcat(evt.event_status_val, " ");
+        temp = strcat(evt.event_status_val, "^");
         newString = strcat(temp, evt.event_time_val);
-      }
-      else {
-        newString = msg.employee_id_val;
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
       }
+      else {
+        if(sizeof(msg.employee_id_val)>20) {
+          char temp[20] = {0};
+          strncpy(temp, msg.employee_id_val,20);
+          temp[19]='.';
+          newString = temp;
+        } else {
+          newString = msg.employee_id_val;
+        }
+        Serial.println("Setting new characteristic value..");
+        Serial.println(newString);
+      }
+
       
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
