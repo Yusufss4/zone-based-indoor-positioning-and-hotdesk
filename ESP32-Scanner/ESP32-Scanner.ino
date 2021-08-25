@@ -51,6 +51,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
+  if (mqttClient.setBufferSize(MQTT_MAX_PACKET_SIZE)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
   // set the callback function
 #ifndef ESP32-SCANNER
   mqttClient.setCallback(callback);
@@ -118,11 +124,15 @@ void loop() {
   Serial.print(numberOfDevicesFound);
   printBuffer(uniqueBuffer, numberOfDevicesFound);
 
-  /* -- DEBUG -- */
+  /* -- BLE DEBUG -- */
   char *myMacAdress = "ac:23:3f:a3:35:68";
   int threshold = -100;
   debugIsPeopleInTheRoom(uniqueBuffer, numberOfDevicesFound, myMacAdress, threshold);
-  /* -- DEBUG -- */
+  /* -- BLE DEBUG -- */
+
+  /* -- MQTT DEBUG -- */
+  //MQTTDebugger(999);
+  /* -- MQTT DEBUG -- */
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
@@ -236,5 +246,29 @@ void debugIsPeopleInTheRoom(BeaconData *uniqueBuffer, int numberOfDevicesFound, 
   Serial.println("Requested people is not in the room.");
   digitalWrite(ONBOARD_LED, LOW);
   return;
+}
 
+void MQTTDebugger(int numberOfChars) {
+  Serial.println("Starting the benchmark...\nGet ready RabbitMQ");
+  for (uint32_t j = 0; j < numberOfChars; j++) {
+    Serial.print("Trying to increasing buffer size...Result: ");
+    Serial.println(mqttClient.setBufferSize(numberOfChars + 30)); //minimum 30 is required.
+
+    String payloadString = "S";
+    for (uint32_t i = 0; i < j; i++) {
+      payloadString += "Y";
+    }
+
+    Serial.print("Debugger Payload length: ");
+    Serial.println(payloadString.length());
+
+    uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+    payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+    int result = mqttClient.publish("/debug/yusuf", message_char_buffer, payloadString.length(), false);
+    Serial.print("PUB Result: ");
+    Serial.println(result);
+    delay(100); //So that broker doesnt crash.
+  }
+  Serial.print("Set buffer size to default...Result: ");
+  Serial.println(mqttClient.setBufferSize(256));
 }
