@@ -169,8 +169,8 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
-      mqttClient.subscribe("/name/ata");
-      mqttClient.subscribe("/next-event/ata");
+      mqttClient.subscribe("/name/yusuf");
+      mqttClient.subscribe("/next-event/yusuf");
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
