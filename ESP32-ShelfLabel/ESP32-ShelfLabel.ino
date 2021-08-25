@@ -169,10 +169,8 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
-
       mqttClient.subscribe("/name/ata");
       mqttClient.subscribe("/next-event/ata");
-
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
@@ -397,11 +395,9 @@ static void ble_task(void *argp)
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
     } 
-
     // BLE Task is over, listener task can continue to its work.
     Serial.println("The listener task is resuming now..");
     vTaskResume(h_listener);
-
   }
 }
 
