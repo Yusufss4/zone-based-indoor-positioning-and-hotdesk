@@ -13,7 +13,7 @@
 #define MAX_STRING_SIZE 40
 
 static SemaphoreHandle_t barrier;
-static QueueHandle_t message_queue;
+TaskHandle_t h_listener;
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
@@ -169,8 +169,10 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
+
       mqttClient.subscribe("/name/ata");
       mqttClient.subscribe("/next-event/ata");
+
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
@@ -294,10 +296,15 @@ static void listener_task(void *argp)
     if(transmit_flag == true)
     {
       transmit_flag = false;
-      
+
+      Serial.println("Giving the semaphore..");
       // Signal to ble_task
       rc = xSemaphoreGive(barrier);
       // assert(rc == pdPASS);
+
+      // Suspend the task in order to avoid conflict between WiFi and BLE.
+      Serial.println("The listener task is suspending now..");
+      vTaskSuspend(NULL);
     }
   }
 }
@@ -316,9 +323,10 @@ static void ble_task(void *argp)
   BaseType_t rc;
 
   for(;;)
-  {
+  {    
     rc = xSemaphoreTake(barrier, portMAX_DELAY);
     assert(rc == pdPASS);
+    Serial.println("Taking the semaphore..");
     
     // Transmit to BLEUUID
     if(topic_flag) {
@@ -338,6 +346,9 @@ static void ble_task(void *argp)
 
     // Connect to ESL according to the UUID value in the Queue.
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+
+    delay(1000);
+    
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -381,20 +392,22 @@ static void ble_task(void *argp)
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
       }
-
       
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
     } 
-    
+
+    // BLE Task is over, listener task can continue to its work.
+    Serial.println("The listener task is resuming now..");
+    vTaskResume(h_listener);
+
   }
 }
 
 void setup() 
 {
   int app_cpu = xPortGetCoreID();
-  TaskHandle_t h;
   BaseType_t rc;
 
   barrier = xSemaphoreCreateBinary();
@@ -411,26 +424,25 @@ void setup()
   rc = xTaskCreatePinnedToCore(
     listener_task,
     "listenertask",
-    5000,   // Stack Size
+    10000,            // Stack Size
     nullptr,
-    1,      // Priortiy
-    &h,     // Task Handle
-    app_cpu // CPU
+    1,               // Priortiy
+    &h_listener,     // Task Handle
+    app_cpu          // CPU
   );
   assert(rc == pdPASS);
-  assert(h);
+  assert(h_listener);
 
   rc = xTaskCreatePinnedToCore(
     ble_task,
     "bletask",
-    5000,   // Stack Size
+    10000,   // Stack Size
     nullptr,
-    1,      // Priortiy
-    &h,     // Task Handle
+    2,      // Priortiy
+    nullptr,     // Task Handle
     app_cpu // CPU
   );
   assert(rc == pdPASS);
-  assert(h);
 }
 
 void loop() 
