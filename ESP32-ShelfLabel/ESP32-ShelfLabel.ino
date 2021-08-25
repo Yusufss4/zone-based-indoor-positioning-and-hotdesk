@@ -169,8 +169,10 @@ void reconnectToTheBroker() {
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       //subscribe to topic
-      mqttClient.subscribe("/name/yusuf");
-      mqttClient.subscribe("/next-event/yusuf");
+
+      mqttClient.subscribe("/name/ata");
+      mqttClient.subscribe("/next-event/ata");
+
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
@@ -370,13 +372,23 @@ static void ble_task(void *argp)
 
     if (connected) {
       String newString = "";
+      
       if(topic_flag) {
         char* temp;
-        temp = strcat(evt.event_status_val, " ");
+        temp = strcat(evt.event_status_val, "^");
         newString = strcat(temp, evt.event_time_val);
+        Serial.println("Setting new characteristic value..");
+        Serial.println(newString);
       }
       else {
-        newString = msg.employee_id_val;
+        if(sizeof(msg.employee_id_val)>20) {
+          char temp[20] = {0};
+          strncpy(temp, msg.employee_id_val,20);
+          temp[19]='.';
+          newString = temp;
+        } else {
+          newString = msg.employee_id_val;
+        }
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
       }
@@ -385,9 +397,11 @@ static void ble_task(void *argp)
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
     } 
+
     // BLE Task is over, listener task can continue to its work.
     Serial.println("The listener task is resuming now..");
     vTaskResume(h_listener);
+
   }
 }
 
