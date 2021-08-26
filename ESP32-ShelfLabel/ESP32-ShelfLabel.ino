@@ -387,8 +387,10 @@ static void ble_task(void *argp)
           strncpy(temp, msg.employee_id_val,20);
           temp[19]='.';
           newString = temp;
+          newString.replace(" ","^");
         } else {
           newString = msg.employee_id_val;
+          newString.replace(" ","^");
         }
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
