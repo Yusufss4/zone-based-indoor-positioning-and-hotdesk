@@ -6,6 +6,9 @@
 #include "BLEDevice.h"
 
 
+#define MQTT_LED 2
+#define BLE_LED 3
+
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
@@ -170,6 +173,7 @@ void reconnectToTheBroker() {
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
+      digitalWrite(MQTT_LED,HIGH);
       //subscribe to topic
       mqttClient.subscribe("/name/ata");
       mqttClient.subscribe("/next-event/ata");
@@ -177,6 +181,7 @@ void reconnectToTheBroker() {
     else {
       //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
+      digitalWrite(MQTT_LED,LOW);
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5) {
@@ -194,6 +199,7 @@ void connectToWiFi() {
     delay(500);
   }
   Serial.print("Connected to the WiFi.");
+  
 }
 
 
@@ -405,6 +411,9 @@ static void ble_task(void *argp)
 
 void setup() 
 {
+  pinMode(MQTT_LED,OUTPUT);
+  digitalWrite(MQTT_LED,LOW);
+  
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
 
