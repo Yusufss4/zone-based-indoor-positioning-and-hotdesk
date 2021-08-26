@@ -198,7 +198,7 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
     payloadString += "\",\"r\":\"";
     payloadString += String(uniqueBuffer[i].rssi);
     payloadString += "\"}";
-    if (i < bufferIndex - 1) {
+    if (i < numberOfDevicesFound - 1) {
       payloadString += ',';
     }
   }
