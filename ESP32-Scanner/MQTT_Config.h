@@ -6,7 +6,7 @@
 #define WIFI_PASSWORD        "V9dp6ACGgxjE"
 
 /*Device Types*/
-#define ESP32-SCANNER
+#define ESP32_SCANNER
 
 /* Dont Change !*/
 const char* ca_cert = \

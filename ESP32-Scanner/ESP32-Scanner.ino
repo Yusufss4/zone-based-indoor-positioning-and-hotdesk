@@ -12,7 +12,7 @@
 #include "Globals.h"
 
 #define DATA_SEND 5000 //Per miliseconds
-#define MQTT_MAX_PACKET_SIZE 1000
+#define LOCAL_MQTT_MAX_PACKET_SIZE 1000
 #define ONBOARD_LED 2 //Onboard LED used for debugging.
 
 //Change Config File to Connect the MQTT Broker and WiFi
@@ -26,7 +26,7 @@ PubSubClient mqttClient(wifiClient);
 
 uint8_t bufferIndex = 0; // Found devices counter
 BeaconData buffer[BUFFER_SIZE];
-uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
+uint8_t message_char_buffer[LOCAL_MQTT_MAX_PACKET_SIZE];
 
 
 void connectToWiFi() {
@@ -37,7 +37,7 @@ void connectToWiFi() {
   Serial.print("Connected to the WiFi.");
 }
 
-#ifndef ESP32-SCANNER
+#ifndef ESP32_SCANNER
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Callback - ");
   Serial.print("Message:");
@@ -51,8 +51,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
+  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
   // set the callback function
-#ifndef ESP32-SCANNER
+#ifndef ESP32_SCANNER
   mqttClient.setCallback(callback);
 #endif
   mqttClient.setKeepAlive(60);
@@ -118,11 +124,15 @@ void loop() {
   Serial.print(numberOfDevicesFound);
   printBuffer(uniqueBuffer, numberOfDevicesFound);
 
-  /* -- DEBUG -- */
+  /* -- BLE DEBUG -- */
   char *myMacAdress = "ac:23:3f:a3:35:68";
   int threshold = -100;
   debugIsPeopleInTheRoom(uniqueBuffer, numberOfDevicesFound, myMacAdress, threshold);
-  /* -- DEBUG -- */
+  /* -- BLE DEBUG -- */
+
+  /* -- MQTT DEBUG -- */
+  // MQTTDebugger(999);
+  /* -- MQTT DEBUG -- */
 
   unsigned long now = millis();
   if (now - last_time > DATA_SEND) {
@@ -185,10 +195,10 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
     payloadString += "{\"m\":\"";
     payloadString += String(uniqueBuffer[i].address);
-    payloadString += "\",\"r\":\"";
+    payloadString += "\",\"r\":";
     payloadString += String(uniqueBuffer[i].rssi);
-    payloadString += "\"}";
-    if (i < bufferIndex - 1) {
+    payloadString += "}";
+    if (i < numberOfDevicesFound - 1) {
       payloadString += ',';
     }
   }
@@ -198,17 +208,17 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
 
   // Print and publish payload
   Serial.print("MAX len: ");
-  Serial.println(MQTT_MAX_PACKET_SIZE);
+  Serial.println(LOCAL_MQTT_MAX_PACKET_SIZE);
 
   Serial.print("Payload length: ");
   Serial.println(payloadString.length());
   Serial.println(payloadString);
 
-  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+  uint8_t messageCharBuffer[LOCAL_MQTT_MAX_PACKET_SIZE];
   payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
 
   payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  int result = mqttClient.publish("/o1/m1/esp32-1/info/yusuf", message_char_buffer, payloadString.length(), false);
+  int result = mqttClient.publish("/scn-dvc", message_char_buffer, payloadString.length(), false);
   Serial.print("PUB Result: ");
   Serial.println(result);
   // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
@@ -236,5 +246,29 @@ void debugIsPeopleInTheRoom(BeaconData *uniqueBuffer, int numberOfDevicesFound, 
   Serial.println("Requested people is not in the room.");
   digitalWrite(ONBOARD_LED, LOW);
   return;
+}
 
+void MQTTDebugger(int numberOfChars) {
+  Serial.println("Starting the benchmark...\nGet ready RabbitMQ");
+  for (uint32_t j = 0; j < numberOfChars; j++) {
+    Serial.print("Trying to increasing buffer size...Result: ");
+    Serial.println(mqttClient.setBufferSize(numberOfChars + 30)); //minimum 30 is required.
+
+    String payloadString = "S";
+    for (uint32_t i = 0; i < j; i++) {
+      payloadString += "Y";
+    }
+
+    Serial.print("Debugger Payload length: ");
+    Serial.println(payloadString.length());
+
+    uint8_t messageCharBuffer[LOCAL_MQTT_MAX_PACKET_SIZE];
+    payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+    int result = mqttClient.publish("/debug/yusuf", message_char_buffer, payloadString.length(), false);
+    Serial.print("PUB Result: ");
+    Serial.println(result);
+    delay(100); //So that broker doesnt crash.
+  }
+  Serial.print("Set buffer size to default...Result: ");
+  Serial.println(mqttClient.setBufferSize(256));
 }
