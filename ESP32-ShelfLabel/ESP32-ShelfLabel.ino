@@ -9,7 +9,7 @@
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-#define NUMBER_OF_STRING 6
+#define NUMBER_OF_STRING 5
 #define MAX_STRING_SIZE 40
 
 #define WIFI_RDY 0b0001
@@ -25,6 +25,7 @@ PubSubClient mqttClient(wifiClient);
 bool transmit_flag = false;
 
 BLEClient*  pClient;
+BLERemoteService* pRemoteService;
 
 bool topic_flag = false; //0 = smartdesk / 1 = smartroom
 
@@ -106,7 +107,7 @@ bool connectToServer() {
   Serial.println(" - Connected to server");
 
   // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(service_uuid);
+  pRemoteService = pClient->getService(service_uuid);
   //BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
   if (pRemoteService == nullptr) {
     Serial.print("Failed to find our service UUID: ");
@@ -229,8 +230,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       topic_flag = false;
       Serial.println("Detected message at the topic name");
       strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
-      strcpy(msg.service_uuid_val, strtok(NULL, delimeter));
-      strcpy(msg.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(msg.service_uuid_val, msg.device_uuid_val);
+      msg.service_uuid_val[7]='1';
+      strcpy(msg.char_uuid_val, msg.device_uuid_val);
+      msg.char_uuid_val[7]='2';
       strcpy(msg.employee_id_val, strtok(NULL, delimeter));
 
       Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
@@ -251,8 +254,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       topic_flag = true;
       Serial.println("Detected message at the topic name");
       strcpy(evt.device_uuid_val, strtok(NULL, delimeter));
-      strcpy(evt.service_uuid_val, strtok(NULL, delimeter));
-      strcpy(evt.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(evt.service_uuid_val, evt.device_uuid_val);
+      evt.service_uuid_val[7]='1';
+      strcpy(evt.char_uuid_val, evt.device_uuid_val);
+      evt.char_uuid_val[7]='2';
       strcpy(evt.event_status_val, strtok(NULL, delimeter));
       strcpy(evt.event_time_val, strtok(NULL, delimeter));
 
@@ -405,8 +410,10 @@ static void ble_task(void *argp)
           strncpy(temp, msg.employee_id_val,20);
           temp[19]='.';
           newString = temp;
+          newString.replace(" ","^");
         } else {
           newString = msg.employee_id_val;
+          newString.replace(" ","^");
         }
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
