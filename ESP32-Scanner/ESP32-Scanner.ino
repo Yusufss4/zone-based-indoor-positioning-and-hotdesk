@@ -195,9 +195,9 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
     payloadString += "{\"m\":\"";
     payloadString += String(uniqueBuffer[i].address);
-    payloadString += "\",\"r\":\"";
+    payloadString += "\",\"r\":";
     payloadString += String(uniqueBuffer[i].rssi);
-    payloadString += "\"}";
+    payloadString += "}";
     if (i < numberOfDevicesFound - 1) {
       payloadString += ',';
     }
@@ -218,7 +218,7 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
 
   payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  int result = mqttClient.publish("/o1/m1/esp32-1/info/yusuf", message_char_buffer, payloadString.length(), false);
+  int result = mqttClient.publish("/scn-dvc", message_char_buffer, payloadString.length(), false);
   Serial.print("PUB Result: ");
   Serial.println(result);
   // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
