@@ -10,14 +10,15 @@
 #include <PubSubClient.h>
 
 #include "NeoPixel.h"
-#define NEOPIXEL_PIN 13
-#define PIXEL_COUNT 12
+#define NEOPIXEL_PIN 13 //D7
+#define PIXEL_COUNT 24
 #include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 NeoPixel DoorLight;
 
 #define DATA_SEND_DELAY 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
+#define ONBOARD_LED 2 //Onboard LED used for debugging.
 
 //Callback
 #define NUMBER_OF_STRING 4
@@ -35,7 +36,7 @@ PubSubClient mqttClient(wifiClient);
 
 //Temp and Humidity
 #include <DHT.h>
-#define DHTPIN 15
+#define DHTPIN 15 //D8
 #define DHTTYPE DHT11
 #define SAMPLE_DELAY 10000
 DHT dht(DHTPIN, DHTTYPE);
@@ -48,9 +49,12 @@ void connectToWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(ONBOARD_LED, LOW);
     delay(500);
+    digitalWrite(ONBOARD_LED, HIGH);
   }
-  Serial.print("Connected to the WiFi.");
+  Serial.print("Connected to the WiFi."); 
+  digitalWrite(ONBOARD_LED, LOW);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -135,17 +139,21 @@ void setup() {
   setupMQTT();
   DoorLight.setupNeoPixel();
   dht.begin();
+  pinMode(ONBOARD_LED, OUTPUT);
+  digitalWrite(ONBOARD_LED, LOW);
 }
 
 void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
+    digitalWrite(ONBOARD_LED, LOW);
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("Connected.");
       //subscribe to topic
       mqttClient.subscribe("/nrom");
       mqttClient.subscribe("/next-event/yusuf");
+      digitalWrite(ONBOARD_LED, LOW);
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -155,6 +163,7 @@ void reconnectToTheBroker() {
         Serial.print("Rebooting the device...");
         ESP.restart();
       }
+      digitalWrite(ONBOARD_LED, HIGH);
     }
     delay(500);
   }
@@ -195,7 +204,7 @@ void loop() {
 
 void publishScanDataToMQTT() {
   Serial.print("PUB Result: ");
-  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info", "test-esp8266"));
+  Serial.println(mqttClient.publish("/test-data", "test-esp8266"));
 }
 
 void publishDeviceInfoToMQTT() {
