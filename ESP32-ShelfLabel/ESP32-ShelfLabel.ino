@@ -5,15 +5,13 @@
 #include "MQTT_Config.h"
 #include "BLEDevice.h"
 
-
-#define DATA_SEND 5000 //Per miliseconds
-#define MQTT_MAX_PACKET_SIZE 1000
-
-#define NUMBER_OF_STRING 5
+#define NUMBER_OF_STRING 6
 #define MAX_STRING_SIZE 40
 
 #define WIFI_RDY 0b0001
 #define MQTT_CHG 0b0010
+
+#define LED 13
 
 //static SemaphoreHandle_t barrier;
 //TaskHandle_t h_listener;
@@ -170,8 +168,10 @@ void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
+    led_off(LED);
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
+      led_on(LED);
       //subscribe to topic
       mqttClient.subscribe("/name");
       mqttClient.subscribe("/next-event");
@@ -280,6 +280,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
+void led_on(int led)
+{
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);
+}
+
+void led_off(int led)
+{
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, LOW);
+}
+
 void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
@@ -299,7 +311,7 @@ static void mqtt_task(void *argp)
       xEventGroupWaitBits(
       hevt,            // Event group
       WIFI_RDY,        // bits to wait for
-      pdTRUE,         // no clear
+      pdFALSE,         // no clear
       pdFALSE,         // wait for all bits
       portMAX_DELAY);  // timeout
 
