@@ -1,4 +1,4 @@
-#include <Arduino.h>
+//#include <Arduino.h>
 //This code is for Meeting or Kitchen ESP32s Scanning Gateway
 //Topic list included in - https://docs.google.com/document/d/1uNCvFoLJsAC_Qh4L8_6ozjhal6APVGUYTeoTuyXoGE8/edit?usp=sharing
 
@@ -6,56 +6,70 @@
 
 //MQTT and WiFi
 //#include <WiFiClientSecure.h>
+#include <WiFiManager.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <DHT.h>
 
-#include "NeoPixel.h"
-#define NEOPIXEL_PIN 13 //D7
-#define PIXEL_COUNT 24
-#include <Adafruit_NeoPixel.h>
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-NeoPixel DoorLight;
+/*#include "NeoPixel.h"
+  #define NEOPIXEL_PIN 13
+  #define PIXEL_COUNT 12
+  #include <Adafruit_NeoPixel.h>
+  Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+  NeoPixel DoorLight;*/
 
-#define DATA_SEND_DELAY 5000 //Per miliseconds
+#define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
-#define ONBOARD_LED 2 //Onboard LED used for debugging.
 
 //Callback
 #define NUMBER_OF_STRING 4
 #define MAX_STRING_SIZE 40
 
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+#define RESET_PIN 16
+
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
 
-unsigned long lastSendTime = 0;
-
+unsigned long last_time = 0;
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
-
-//Temp and Humidity
-#include <DHT.h>
-#define DHTPIN 15 //D8
-#define DHTTYPE DHT11
-#define SAMPLE_DELAY 10000
-DHT dht(DHTPIN, DHTTYPE);
-unsigned long lastSampleTime = 0;
+WiFiManager wm;
 
 uint8_t message_char_buffer[MQTT_MAX_PACKET_SIZE];
 
+void WiFiConnect() {
+  WiFi.mode(WIFI_STA);
+  if (WiFi.status() != WL_CONNECTED) {
+    wm.setConnectTimeout(60);
+    wm.setConfigPortalTimeout(180);
+    bool res = wm.autoConnect("ESP8266-1", "password");
+    if (!res) {
+      Serial.println("Failed to connect");
+      ESP.restart;
+    }
+    else {
+      Serial.println("connected to wifi");
+    }
+  }
+ // return (WiFi.status() == WL_CONNECTED);
+}
 
-void connectToWiFi() {
+
+/*void connectToWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(ONBOARD_LED, LOW);
     delay(500);
-    digitalWrite(ONBOARD_LED, HIGH);
+    Serial.println("connecting..");
   }
-  Serial.print("Connected to the WiFi."); 
-  digitalWrite(ONBOARD_LED, LOW);
-}
+  Serial.print("Connected to the WiFi.");
+  }*/
 
 void callback(char* topic, byte* payload, unsigned int length) {
 
@@ -91,9 +105,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   int numOfPeopleInTheRoom = 0;
   int capacityOfRoom = 0;
 
-  if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
+  /*if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     // Check if the MQTT message was received on topic esp32/relay1
-    if (strcmp(topic, "/nrom") == 0) {
+    if (strcmp(topic, "/nrom/yusuf") == 0) {
       Serial.println("Detected message at the topic nrom");
       numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
       capacityOfRoom = atoi(strtok(NULL, delimeter));
@@ -117,10 +131,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("eventStatus: "); Serial.println(eventStatus);
       Serial.print("eventTime: "); Serial.println(eventTime);
     }
-  }
-  else {
+    }
+    else {
     Serial.println("Different device");
-  }
+    }*/
 
 }
 
@@ -132,28 +146,57 @@ void setupMQTT() {
   mqttClient.setKeepAlive(60);
 }
 
+void checkButton(){
+  // check for button press
+  if ( digitalRead(RESET_PIN) == LOW ) {
+    delay(50);
+    if( digitalRead(RESET_PIN) == LOW ){
+      Serial.println("Button Pressed");
+      delay(3000); // reset delay hold
+      if( digitalRead(RESET_PIN) == LOW ){
+        Serial.println("Button Held");
+        Serial.println("Erasing Config, restarting");
+        wm.resetSettings();
+        ESP.restart();
+      }
+      
+      // start portal w delay
+      Serial.println("Starting config portal");
+      wm.setConfigPortalTimeout(120);
+      
+      if (!wm.startConfigPortal("OnDemandAP","password")) {
+        Serial.println("failed to connect or hit timeout");
+        delay(3000);
+        // ESP.restart();
+      } else {
+        //if you get here you have connected to the WiFi
+        Serial.println("connected...yeey :)");
+      }
+    }
+  }
+}
+
+
 
 void setup() {
   Serial.begin(9600);
-  connectToWiFi();
+  WiFiConnect();
   setupMQTT();
-  DoorLight.setupNeoPixel();
+  pinMode(RESET_PIN, INPUT);
   dht.begin();
-  pinMode(ONBOARD_LED, OUTPUT);
-  digitalWrite(ONBOARD_LED, LOW);
+  
+  // DoorLight.setupNeoPixel();
 }
 
 void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
-    digitalWrite(ONBOARD_LED, LOW);
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("Connected.");
       //subscribe to topic
-      mqttClient.subscribe("/nrom");
+      mqttClient.subscribe("/nrom/yusuf");
       mqttClient.subscribe("/next-event/yusuf");
-      digitalWrite(ONBOARD_LED, LOW);
     }
     else {
       Serial.print("Connection failed, rc=");
@@ -163,78 +206,72 @@ void reconnectToTheBroker() {
         Serial.print("Rebooting the device...");
         ESP.restart();
       }
-      digitalWrite(ONBOARD_LED, HIGH);
     }
     delay(500);
   }
 }
 
+void publishTemp() {
+  float humidity = dht.readHumidity(); //get humidity
+  float temperature = dht.readTemperature(); //get temperature
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+  else {
+    String payload = "{ \"mac\":\"";
+    payload += WiFi.macAddress();
+    payload += "\",\"temp\":";
+    payload += String(temperature).c_str();
+    payload += ",\"hmd\":";
+    payload += String(humidity).c_str();
+    payload += "}";
+
+    //convert string to byte and publish
+    uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
+    payload.getBytes(messageCharBuffer, payload.length() + 1);
+    mqttClient.publish("/temp-hmd", messageCharBuffer, payload.length(), false);
+  }
+}
+
+/*void reconnectToWiFi(){
+  int numberOfConnectionsTried = 0;
+  while(WiFi.status() != WL_CONNECTED){
+    Serial.println("Reconnecting to WiFi");
+    if(!WiFiConnect()){
+      numberOfConnectionsTried++;
+      if(numberOfConnectionsTried >
+    }
+  }
+}*/
+
 
 void loop() {
-
-  if (!mqttClient.connected()) {
-    Serial.println("Reconnecting to the broker..");
-    reconnectToTheBroker();
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!mqttClient.connected()) {
+      Serial.println("Reconnecting to the broker..");
+      reconnectToTheBroker();
+    }
+  }
+  else{
+    WiFiConnect();
   }
   mqttClient.loop();
-
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastSendTime > DATA_SEND_DELAY) {
+  checkButton();
+  unsigned long now = millis();
+  if (now - last_time > DATA_SEND) {
     //Serial.print("Device Mac Address: ");
     //Serial.println(WiFi.macAddress());
     publishScanDataToMQTT();
-    publishDeviceInfoToMQTT();
-    lastSendTime = currentMillis;
+    //    publishDeviceInfoToMQTT();
+    publishTemp();
+    last_time = now;
   }
 
-  if (currentMillis - lastSampleTime >= SAMPLE_DELAY) {
-    float humidity = 0;
-    float temperature = 0;
-    if (readTempAndHumidity(&humidity, &temperature) == 1) {
-      publishTempAndHumidityDataToMQTT(&humidity, &temperature);
-    }
-    else
-    {
-      Serial.println(F("Failed to read from DHT sensor!"));
-    }
-    lastSampleTime = currentMillis;
-  }
 }
 
 
 void publishScanDataToMQTT() {
   Serial.print("PUB Result: ");
-  Serial.println(mqttClient.publish("/test-data", "test-esp8266"));
-}
-
-void publishDeviceInfoToMQTT() {
-  //Not implemented. Temp and humidity.
-}
-
-int readTempAndHumidity(float *humidity, float *temperature) {
-  *humidity = dht.readHumidity();
-  *temperature = dht.readTemperature();
-  if (isnan(*humidity) || isnan(*temperature)) {
-    Serial.println(F("Failed to read from DHT sensor!!"));
-    return -1;
-  }
-  else {
-    return 1;
-  }
-}
-
-void publishTempAndHumidityDataToMQTT(float *humidity, float *temperature) {
-  int result = 0;
-  String payload = "{ \"mac\":\"";
-  payload += WiFi.macAddress();
-  payload += "\",\"temp\":";
-  payload += String(*temperature).c_str();
-  payload += ",\"hmd\":";
-  payload += String(*humidity).c_str();
-  payload += "}";
-
-  //convert string to byte and publish
-  uint8_t messageCharBuffer[MQTT_MAX_PACKET_SIZE];
-  payload.getBytes(messageCharBuffer, payload.length() + 1);
-  result = mqttClient.publish("/temp-hmd", messageCharBuffer, payload.length(), false);
+  Serial.println(mqttClient.publish("/o1/m1/esp32-1/info", "test-esp8266"));
 }
