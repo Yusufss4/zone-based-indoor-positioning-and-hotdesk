@@ -8,8 +8,11 @@
 #define NUMBER_OF_STRING 6
 #define MAX_STRING_SIZE 40
 
-#define WIFI_RDY 0b0001
-#define MQTT_CHG 0b0010
+#define MQTT_LED 2
+#define BLE_LED 3
+
+#define DATA_SEND 5000 //Per miliseconds
+#define MQTT_MAX_PACKET_SIZE 1000
 
 #define LED 13
 
@@ -171,7 +174,7 @@ void reconnectToTheBroker() {
     led_off(LED);
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
-      led_on(LED);
+      digitalWrite(MQTT_LED,HIGH);
       //subscribe to topic
       mqttClient.subscribe("/name");
       mqttClient.subscribe("/next-event");
@@ -179,6 +182,7 @@ void reconnectToTheBroker() {
     else {
       //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
+      digitalWrite(MQTT_LED,LOW);
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5) {
@@ -196,8 +200,8 @@ void connectToWiFi() {
     Serial.println("WiFi is diconnected.");
     delay(500);
   }
-  Serial.println("Connected to the WiFi.");
-  xEventGroupSetBits(hevt, WIFI_RDY);
+  Serial.print("Connected to the WiFi.");
+  
 }
 
 
@@ -442,6 +446,9 @@ static void ble_task(void *argp)
 
 void setup() 
 {
+  pinMode(MQTT_LED,OUTPUT);
+  digitalWrite(MQTT_LED,LOW);
+  
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
 
