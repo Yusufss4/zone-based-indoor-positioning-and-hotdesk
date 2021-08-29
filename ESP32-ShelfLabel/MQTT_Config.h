@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "LionGate"
-#define WIFI_PASSWORD        "LBR7F6YBXW2417!'"
+#define WIFI_SSID            "FiberHGW_TP7502_2.4GHz"
+#define WIFI_PASSWORD        "vpD9vkyj"
 
 /* Dont Change !*/
 const char* ca_cert = \

@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <esp_task_wdt.h>
 #include "MQTT_Config.h"
 #include "BLEDevice.h"
 
@@ -16,9 +17,10 @@
 
 #define LED 13
 
-//static SemaphoreHandle_t barrier;
-//TaskHandle_t h_listener;
-static EventGroupHandle_t hevt;
+extern bool loopTaskWDTEnabled;
+static TaskHandle_t htask;
+static SemaphoreHandle_t barrier;
+
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
@@ -171,7 +173,6 @@ void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
-    led_off(LED);
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
       digitalWrite(MQTT_LED,HIGH);
@@ -201,7 +202,6 @@ void connectToWiFi() {
     delay(500);
   }
   Serial.print("Connected to the WiFi.");
-  
 }
 
 
@@ -246,12 +246,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
       
 
-      // TODO
-      // set EventGroupBits
-      xEventGroupSetBits(hevt, MQTT_CHG);
 
       // Transmit the message data to queue.
-      // transmit_flag = true;
+      transmit_flag = true;
     }
     //room reservation
     else if(strcmp(topic, "/next-event") == 0) {
@@ -271,29 +268,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Event Status: "); Serial.println(evt.event_status_val);
       Serial.print("Event Time: "); Serial.println(evt.event_time_val);
 
-      // TODO
-      // set EventGroupBits
-      xEventGroupSetBits(hevt, MQTT_CHG);
-
       // Transmit the message data to queue.
-      //transmit_flag = true;
+      transmit_flag = true;
     }
   }
   else {
     Serial.println("Different device");
   }
-}
-
-void led_on(int led)
-{
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, HIGH);
-}
-
-void led_off(int led)
-{
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, LOW);
 }
 
 void setupMQTT() {
@@ -312,16 +293,15 @@ void setupMQTT() {
 // Signal to the BLE Task.
 static void mqtt_task(void *argp)
 {
-      xEventGroupWaitBits(
-      hevt,            // Event group
-      WIFI_RDY,        // bits to wait for
-      pdFALSE,         // no clear
-      pdFALSE,         // wait for all bits
-      portMAX_DELAY);  // timeout
+  esp_err_t er;
 
+  er = esp_task_wdt_add(nullptr);
+  assert(er == ESP_OK);
+  
   BaseType_t rc;
   for(;;)
-  { 
+  {
+    esp_task_wdt_reset();
     // Connect to broker
     if (!mqttClient.connected()) {
       Serial.println("Reconnecting to the broker..");
@@ -330,17 +310,15 @@ static void mqtt_task(void *argp)
     // Take the data package, parse it.
     mqttClient.loop();
     
-    // if(transmit_flag == true)
-    // {
-    //   transmit_flag = false;
+    if(transmit_flag == true)
+    {
+      transmit_flag = false;
 
-    //   Serial.println("Giving the semaphore..");
-    //   // Signal to ble_task
-    //   rc = xSemaphoreGive(barrier);
-    //   // assert(rc == pdPASS); 
-    //   Serial.println("Listener task is suspending..."); 
-    //   vTaskSuspend(nullptr);     
-    // }
+      Serial.println("Giving the semaphore..");
+      // Signal to ble_task
+      rc = xSemaphoreGive(barrier);
+      // assert(rc == pdPASS); 
+    }
   }
 }
 
@@ -360,18 +338,9 @@ static void ble_task(void *argp)
 
   for(;;)
   {    
-    // TODO
-    // wait EventGroupBits
-    xEventGroupWaitBits(
-      hevt,            // Event group
-      MQTT_CHG,        // bits to wait for
-      pdTRUE,         // no clear
-      pdFALSE,         // wait for all bits
-      portMAX_DELAY);  // timeour
-
-    // rc = xSemaphoreTake(barrier, portMAX_DELAY);
-    // assert(rc == pdPASS);
-    // Serial.println("Taking the semaphore..");
+    rc = xSemaphoreTake(barrier, portMAX_DELAY);
+    assert(rc == pdPASS);
+    Serial.println("Taking the semaphore..");
     
     // Transmit to BLEUUID
     if(topic_flag) {
@@ -451,23 +420,37 @@ void setup()
   
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
+  esp_err_t er;
 
-  // barrier = xSemaphoreCreateBinary();
-  // assert(barrier);
+  htask = xTaskGetCurrentTaskHandle();
+  loopTaskWDTEnabled = true;
 
-  hevt = xEventGroupCreate();
-  assert(hevt);
+  barrier = xSemaphoreCreateBinary();
+  assert(barrier);
 
   Serial.begin(115200);
-
+  connectToWiFi();
+  setupMQTT();
   Serial.println("Starting ESP32 Gateway application...");
+  BLEDevice::init("");
 
   delay(2000);  // Allow USB to connect
+
+  er = esp_task_wdt_status(htask);
+  assert(er == ESP_ERR_NOT_FOUND);
+
+  if(er == ESP_ERR_NOT_FOUND)
+  {
+    er = esp_task_wdt_init(5, true);
+    assert(er == ESP_OK);
+    er = esp_task_wdt_add(htask);
+    assert(er == ESP_OK);
+  }
 
   rc = xTaskCreatePinnedToCore(
     mqtt_task,
     "mqtttask",
-    5000,       // Stack Size
+    10000,       // Stack Size
     nullptr,
     1,           // Priortiy
     nullptr,     // Task Handle
@@ -479,21 +462,18 @@ void setup()
   rc = xTaskCreatePinnedToCore(
     ble_task,
     "bletask",
-    5000,       // Stack Size
+    10000,       // Stack Size
     nullptr,
     1,           // Priortiy
     nullptr,     // Task Handle
     app_cpu      // CPU
   );
   assert(rc == pdPASS);
-
-  connectToWiFi();
-  setupMQTT();
-  BLEDevice::init("");
 }
 
 void loop() 
 {
-  // Delete loop task.
-  vTaskDelete(nullptr);
+  esp_err_t er;
+  er = esp_task_wdt_status(htask);
+  assert(er == ESP_OK);
 }
