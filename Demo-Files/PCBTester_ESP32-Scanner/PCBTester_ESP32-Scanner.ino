@@ -1,14 +1,15 @@
 //ESP32 - Scanner LED KIT
-#define WIFI_LED 12 //12
-#define MQTT_LED 14 //14
-#define BLE_LED 27 //27
+#define WIFI_LED 12 //12 - BLUE First Led
+#define MQTT_LED 14 //14 - GREEN Second Led
+#define BLE_LED 27 //27 - YELLOW Third Led 
 #define BUTTON_PIN  26 //26
 
 boolean oldState = HIGH;
 int     mode     = 0;
-// The pin the LED is connected to
+
 void setup() {
   Serial.begin(9600);
+  //TODO: Add function for these button startups.
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(WIFI_LED, OUTPUT);
   pinMode(MQTT_LED, OUTPUT);

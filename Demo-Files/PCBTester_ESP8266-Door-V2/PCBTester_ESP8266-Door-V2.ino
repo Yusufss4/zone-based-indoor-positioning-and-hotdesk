@@ -13,15 +13,20 @@
 // Digital IO pin connected to the button. This will be driven with a
 // pull-up resistor so the switch pulls the pin to ground momentarily.
 // On a high -> low transition the button press logic will execute.
-#define BUTTON_PIN   12
 
-#define PIXEL_PIN    13  // Digital IO pin connected to the NeoPixels.
-
+/* IMPORTANT PART */
+#define BUTTON_PIN   12 //D6
+#define PIXEL_PIN    13  //D7 
 #define PIXEL_COUNT 24  // Number of NeoPixels
 
-#define WIFI_LED 5 //D1
-#define MQTT_LED 4 //D2
-#define RIGHTDEVICE_LED 0 //D3
+#define WIFI_LED 5 //D1 -- Not Connected.
+#define MQTT_LED 4 //D2 -- Only This is Connected. 
+#define RIGHTDEVICE_LED 0 //D3 -- Not Connected.
+/* IMPORTANT PART */
+
+/*If we are using Onboard leds we cant connect anything to D0 and D4*/
+#define ONBOARD_LED1 16 //Reversed LOW = HIGH //D0 //Near the power
+#define ONBOARD_LED2 2 //Reversed LOW = HIGH //D4 //Near the antenna
 
 // Declare our NeoPixel strip object:
 Adafruit_NeoPixel strip(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -41,6 +46,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(MQTT_LED, OUTPUT);
   digitalWrite(MQTT_LED, HIGH);
+  strip.setBrightness(100);
   strip.begin(); // Initialize NeoPixel strip object (REQUIRED)
   strip.show();  // Initialize all pixels to 'off'
 }
