@@ -7,13 +7,12 @@
 
 
 #define MQTT_LED 2
-#define BLE_LED 3
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
 #define NUMBER_OF_STRING 5
-#define MAX_STRING_SIZE 40
+#define MAX_STRING_SIZE 50
 
 static SemaphoreHandle_t barrier;
 TaskHandle_t h_listener;
@@ -32,8 +31,8 @@ typedef struct message {
   char device_uuid_val[37];
   char service_uuid_val[37];
   char char_uuid_val[37];
-  char employee_id_val[37];
-}message_t;
+  char employee_id_val[60];
+} message_t;
 
 typedef struct event {
   char device_uuid_val[37];
@@ -41,7 +40,7 @@ typedef struct event {
   char char_uuid_val[37];
   char event_status_val[37];
   char event_time_val[37];
-}event_t;
+} event_t;
 
 // Create the struct
 message_t msg;
@@ -96,7 +95,7 @@ bool connectToServer() {
   Serial.print("Forming a connection to ");
   Serial.println(myDevice->getAddress().toString().c_str());
 
-  
+
   //Serial.println(" - Created client");
   pClient  = BLEDevice::createClient();
 
@@ -173,15 +172,15 @@ void reconnectToTheBroker() {
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
-      digitalWrite(MQTT_LED,HIGH);
+      //digitalWrite(MQTT_LED, HIGH);
       //subscribe to topic
-      mqttClient.subscribe("/name/ata");
-      mqttClient.subscribe("/next-event/ata");
+      mqttClient.subscribe("/name");
+      mqttClient.subscribe("/next-event");
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
-      digitalWrite(MQTT_LED,LOW);
+      //digitalWrite(MQTT_LED, LOW);
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5) {
@@ -199,7 +198,7 @@ void connectToWiFi() {
     delay(500);
   }
   Serial.print("Connected to the WiFi.");
-  
+
 }
 
 
@@ -228,34 +227,34 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     //smart desk
-    if (strcmp(topic, "/name/ata") == 0) {
+    if (strcmp(topic, "/name") == 0) {
       topic_flag = false;
       Serial.println("Detected message at the topic name");
       strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
       strcpy(msg.service_uuid_val, msg.device_uuid_val);
-      msg.service_uuid_val[7]='1';
+      msg.service_uuid_val[7] = '1';
       strcpy(msg.char_uuid_val, msg.device_uuid_val);
-      msg.char_uuid_val[7]='2';
+      msg.char_uuid_val[7] = '2';
       strcpy(msg.employee_id_val, strtok(NULL, delimeter));
 
       Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
       Serial.print("Service uuid: "); Serial.println(msg.service_uuid_val);
       Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
-      
+
 
       // Transmit the message data to queue.
       transmit_flag = true;
     }
     //room reservation
-    else if(strcmp(topic, "/next-event/ata") == 0) {
+    else if (strcmp(topic, "/next-event") == 0) {
       topic_flag = true;
       Serial.println("Detected message at the topic name");
       strcpy(evt.device_uuid_val, strtok(NULL, delimeter));
       strcpy(evt.service_uuid_val, evt.device_uuid_val);
-      evt.service_uuid_val[7]='1';
+      evt.service_uuid_val[7] = '1';
       strcpy(evt.char_uuid_val, evt.device_uuid_val);
-      evt.char_uuid_val[7]='2';
+      evt.char_uuid_val[7] = '2';
       strcpy(evt.event_status_val, strtok(NULL, delimeter));
       strcpy(evt.event_time_val, strtok(NULL, delimeter));
 
@@ -283,7 +282,7 @@ void setupMQTT() {
 }
 
 
-// TODO 
+// TODO
 
 // Connect to broker.
 // Take the data package.
@@ -293,8 +292,8 @@ void setupMQTT() {
 static void listener_task(void *argp)
 {
   BaseType_t rc;
-  for(;;)
-  {  
+  for (;;)
+  {
     // Connect to broker
     if (!mqttClient.connected()) {
       Serial.println("Reconnecting to the broker..");
@@ -302,8 +301,8 @@ static void listener_task(void *argp)
     }
     // Take the data package, parse it.
     mqttClient.loop();
-    
-    if(transmit_flag == true)
+
+    if (transmit_flag == true)
     {
       transmit_flag = false;
 
@@ -311,15 +310,15 @@ static void listener_task(void *argp)
       // Signal to ble_task
       rc = xSemaphoreGive(barrier);
       // assert(rc == pdPASS);
-      
+
     }
   }
 }
 
-// TODO 
+// TODO
 
 // Take the queue values.
-// Scan the ESL devices. 
+// Scan the ESL devices.
 // Connect to ESL according to the UUID value in the Queue.
 // Send the data package. (If the data is bigger than 20 bytes then send it respectively.)
 // Disconnect from device.
@@ -329,14 +328,14 @@ static void ble_task(void *argp)
   BaseType_t s;
   BaseType_t rc;
 
-  for(;;)
-  {    
+  for (;;)
+  {
     rc = xSemaphoreTake(barrier, portMAX_DELAY);
     assert(rc == pdPASS);
     Serial.println("Taking the semaphore..");
-    
+
     // Transmit to BLEUUID
-    if(topic_flag) {
+    if (topic_flag) {
       device_uuid = BLEUUID(evt.device_uuid_val);
       service_uuid = BLEUUID(evt.service_uuid_val);
       char_uuid = BLEUUID(evt.char_uuid_val);
@@ -355,7 +354,7 @@ static void ble_task(void *argp)
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
 
     delay(1000);
-    
+
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -367,20 +366,20 @@ static void ble_task(void *argp)
       } else {
         Serial.println("We have failed to connect to the server; there is nothin more we will do.");
       }
-      
+
       doConnect = false;
     }
     else {
       Serial.println("doConnect = false");
 
-      
+
       Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
     }
 
     if (connected) {
       String newString = "";
-      
-      if(topic_flag) {
+
+      if (topic_flag) {
         char* temp;
         temp = strcat(evt.event_status_val, "^");
         newString = strcat(temp, evt.event_time_val);
@@ -388,32 +387,47 @@ static void ble_task(void *argp)
         Serial.println(newString);
       }
       else {
-        if(sizeof(msg.employee_id_val)>20) {
+        if (sizeof(msg.employee_id_val) > 20) {
           char temp[20] = {0};
-          strncpy(temp, msg.employee_id_val,20);
-          temp[19]='.';
-          newString = temp;
-          newString.replace(" ","^");
+          int i;
+          int msg_num = strlen(msg.employee_id_val) / 20;
+          Serial.println(msg_num);
+          for (i = 0; i < (msg_num + 1); i++) {
+            //strncpy(temp, msg.employee_id_val,20);
+            memcpy(temp, &msg.employee_id_val[i * 20], 20);
+            //Serial.println(temp);
+            if (i == msg_num) {
+              temp[strlen(msg.employee_id_val) % 20] = '#';
+            }
+            newString = temp;
+            newString.replace(" ", "^");
+            Serial.println("Setting new characteristic value..");
+            Serial.println(newString);
+            pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+            delay(10000);
+          }
+
         } else {
-          newString = msg.employee_id_val;
-          newString.replace(" ","^");
+          newString = strcat(msg.employee_id_val, "#");
+          newString.replace(" ", "^");
+          Serial.println("Setting new characteristic value..");
+          Serial.println(newString);
+          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
         }
-        Serial.println("Setting new characteristic value..");
-        Serial.println(newString);
       }
-      
+
       // Set the characteristic's value to be the array of bytes that is actually a string.
-      pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+      //pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
-    } 
+    }
   }
 }
 
-void setup() 
+void setup()
 {
-  pinMode(MQTT_LED,OUTPUT);
-  digitalWrite(MQTT_LED,LOW);
-  
+  //pinMode(MQTT_LED, OUTPUT);
+  //digitalWrite(MQTT_LED, LOW);
+
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
 
@@ -429,30 +443,30 @@ void setup()
   delay(2000);  // Allow USB to connect
 
   rc = xTaskCreatePinnedToCore(
-    listener_task,
-    "listenertask",
-    10000,            // Stack Size
-    nullptr,
-    1,               // Priortiy
-    &h_listener,     // Task Handle
-    app_cpu          // CPU
-  );
+         listener_task,
+         "listenertask",
+         10000,            // Stack Size
+         nullptr,
+         1,               // Priortiy
+         &h_listener,     // Task Handle
+         app_cpu          // CPU
+       );
   assert(rc == pdPASS);
   assert(h_listener);
 
   rc = xTaskCreatePinnedToCore(
-    ble_task,
-    "bletask",
-    10000,   // Stack Size
-    nullptr,
-    1,      // Priortiy
-    nullptr,     // Task Handle
-    app_cpu // CPU
-  );
+         ble_task,
+         "bletask",
+         10000,   // Stack Size
+         nullptr,
+         1,      // Priortiy
+         nullptr,     // Task Handle
+         app_cpu // CPU
+       );
   assert(rc == pdPASS);
 }
 
-void loop() 
+void loop()
 {
   vTaskDelete(nullptr);
 }
