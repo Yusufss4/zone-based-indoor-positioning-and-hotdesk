@@ -5,22 +5,25 @@
 #include "MQTT_Config.h"
 #include "BLEDevice.h"
 
-
-#define DATA_SEND 5000 //Per miliseconds
-#define MQTT_MAX_PACKET_SIZE 1000
-
 #define NUMBER_OF_STRING 6
 #define MAX_STRING_SIZE 40
 
-static SemaphoreHandle_t barrier;
-TaskHandle_t h_listener;
+#define WIFI_RDY 0b0001
+#define MQTT_CHG 0b0010
+
+#define LED 13
+
+//static SemaphoreHandle_t barrier;
+//TaskHandle_t h_listener;
+static EventGroupHandle_t hevt;
 
 //WiFiClientSecure wifiClient;
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 bool transmit_flag = false;
 
-BLEClient*  pClient  = BLEDevice::createClient();
+BLEClient*  pClient;
+BLERemoteService* pRemoteService;
 
 bool topic_flag = false; //0 = smartdesk / 1 = smartroom
 
@@ -61,7 +64,6 @@ BLEUUID char_uuid("");
 
 bool doConnect = false;
 bool connected = false;
-bool doScan = false;
 BLERemoteCharacteristic* pRemoteCharacteristic;
 BLEAdvertisedDevice* myDevice;
 
@@ -94,6 +96,7 @@ bool connectToServer() {
 
   
   //Serial.println(" - Created client");
+  pClient  = BLEDevice::createClient();
 
   pClient->setClientCallbacks(new MyClientCallback());
 
@@ -102,7 +105,7 @@ bool connectToServer() {
   Serial.println(" - Connected to server");
 
   // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(service_uuid);
+  pRemoteService = pClient->getService(service_uuid);
   //BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
   if (pRemoteService == nullptr) {
     Serial.print("Failed to find our service UUID: ");
@@ -156,8 +159,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         BLEDevice::getScan()->stop();
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
         doConnect = true;
-        doScan = true;
-
+        Serial.print("doConnect = true");
       } // Found our server
     } // onResult
 }; // MyAdvertisedDeviceCallbacks
@@ -166,11 +168,13 @@ void reconnectToTheBroker() {
   int numberOfConnectionsTried = 0;
   while (!mqttClient.connected()) {
     Serial.println("Reconnecting to MQTT Broker..");
+    led_off(LED);
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
+      led_on(LED);
       //subscribe to topic
-      mqttClient.subscribe("/name/ata");
-      mqttClient.subscribe("/next-event/ata");
+      mqttClient.subscribe("/name");
+      mqttClient.subscribe("/next-event");
     }
     else {
       //MQTT Could not reconnect, wifi/esp32 error
@@ -189,9 +193,11 @@ void reconnectToTheBroker() {
 void connectToWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi is diconnected.");
     delay(500);
   }
-  Serial.print("Connected to the WiFi.");
+  Serial.println("Connected to the WiFi.");
+  xEventGroupSetBits(hevt, WIFI_RDY);
 }
 
 
@@ -220,12 +226,14 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     //smart desk
-    if (strcmp(topic, "/name/ata") == 0) {
+    if (strcmp(topic, "/name") == 0) {
       topic_flag = false;
       Serial.println("Detected message at the topic name");
       strcpy(msg.device_uuid_val, strtok(NULL, delimeter));
-      strcpy(msg.service_uuid_val, strtok(NULL, delimeter));
-      strcpy(msg.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(msg.service_uuid_val, msg.device_uuid_val);
+      msg.service_uuid_val[7]='1';
+      strcpy(msg.char_uuid_val, msg.device_uuid_val);
+      msg.char_uuid_val[7]='2';
       strcpy(msg.employee_id_val, strtok(NULL, delimeter));
 
       Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
@@ -234,16 +242,22 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
       
 
+      // TODO
+      // set EventGroupBits
+      xEventGroupSetBits(hevt, MQTT_CHG);
+
       // Transmit the message data to queue.
-      transmit_flag = true;
+      // transmit_flag = true;
     }
     //room reservation
-    else if(strcmp(topic, "/next-event/ata") == 0) {
+    else if(strcmp(topic, "/next-event") == 0) {
       topic_flag = true;
       Serial.println("Detected message at the topic name");
       strcpy(evt.device_uuid_val, strtok(NULL, delimeter));
-      strcpy(evt.service_uuid_val, strtok(NULL, delimeter));
-      strcpy(evt.char_uuid_val, strtok(NULL, delimeter));
+      strcpy(evt.service_uuid_val, evt.device_uuid_val);
+      evt.service_uuid_val[7]='1';
+      strcpy(evt.char_uuid_val, evt.device_uuid_val);
+      evt.char_uuid_val[7]='2';
       strcpy(evt.event_status_val, strtok(NULL, delimeter));
       strcpy(evt.event_time_val, strtok(NULL, delimeter));
 
@@ -253,13 +267,29 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Event Status: "); Serial.println(evt.event_status_val);
       Serial.print("Event Time: "); Serial.println(evt.event_time_val);
 
+      // TODO
+      // set EventGroupBits
+      xEventGroupSetBits(hevt, MQTT_CHG);
+
       // Transmit the message data to queue.
-      transmit_flag = true;
+      //transmit_flag = true;
     }
   }
   else {
     Serial.println("Different device");
   }
+}
+
+void led_on(int led)
+{
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, HIGH);
+}
+
+void led_off(int led)
+{
+  pinMode(LED, OUTPUT);
+  digitalWrite(LED, LOW);
 }
 
 void setupMQTT() {
@@ -270,19 +300,24 @@ void setupMQTT() {
   mqttClient.setKeepAlive(60);
 }
 
-
-// TODO 
-
+// TODO: Create a mqtt_task 
 // Connect to broker.
 // Take the data package.
 // Parse it.
 // Add to the queue struct.
 // Signal to the BLE Task.
-static void listener_task(void *argp)
+static void mqtt_task(void *argp)
 {
+      xEventGroupWaitBits(
+      hevt,            // Event group
+      WIFI_RDY,        // bits to wait for
+      pdFALSE,         // no clear
+      pdFALSE,         // wait for all bits
+      portMAX_DELAY);  // timeout
+
   BaseType_t rc;
   for(;;)
-  {  
+  { 
     // Connect to broker
     if (!mqttClient.connected()) {
       Serial.println("Reconnecting to the broker..");
@@ -291,23 +326,21 @@ static void listener_task(void *argp)
     // Take the data package, parse it.
     mqttClient.loop();
     
-    if(transmit_flag == true)
-    {
-      transmit_flag = false;
+    // if(transmit_flag == true)
+    // {
+    //   transmit_flag = false;
 
-      Serial.println("Giving the semaphore..");
-      // Signal to ble_task
-      rc = xSemaphoreGive(barrier);
-      // assert(rc == pdPASS);
-
-      // Suspend the task in order to avoid conflict between WiFi and BLE.
-      Serial.println("The listener task is suspending now..");
-      vTaskSuspend(NULL);
-    }
+    //   Serial.println("Giving the semaphore..");
+    //   // Signal to ble_task
+    //   rc = xSemaphoreGive(barrier);
+    //   // assert(rc == pdPASS); 
+    //   Serial.println("Listener task is suspending..."); 
+    //   vTaskSuspend(nullptr);     
+    // }
   }
 }
 
-// TODO 
+// TODO: Create a ble task 
 
 // Take the queue values.
 // Scan the ESL devices. 
@@ -317,14 +350,24 @@ static void listener_task(void *argp)
 // Signal to the listener task.
 static void ble_task(void *argp)
 {
+
   BaseType_t s;
   BaseType_t rc;
 
   for(;;)
   {    
-    rc = xSemaphoreTake(barrier, portMAX_DELAY);
-    assert(rc == pdPASS);
-    Serial.println("Taking the semaphore..");
+    // TODO
+    // wait EventGroupBits
+    xEventGroupWaitBits(
+      hevt,            // Event group
+      MQTT_CHG,        // bits to wait for
+      pdTRUE,         // no clear
+      pdFALSE,         // wait for all bits
+      portMAX_DELAY);  // timeour
+
+    // rc = xSemaphoreTake(barrier, portMAX_DELAY);
+    // assert(rc == pdPASS);
+    // Serial.println("Taking the semaphore..");
     
     // Transmit to BLEUUID
     if(topic_flag) {
@@ -344,9 +387,6 @@ static void ble_task(void *argp)
 
     // Connect to ESL according to the UUID value in the Queue.
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-
-    delay(1000);
-    
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -363,8 +403,6 @@ static void ble_task(void *argp)
     }
     else {
       Serial.println("doConnect = false");
-
-      
       Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
     }
 
@@ -384,8 +422,10 @@ static void ble_task(void *argp)
           strncpy(temp, msg.employee_id_val,20);
           temp[19]='.';
           newString = temp;
+          newString.replace(" ","^");
         } else {
           newString = msg.employee_id_val;
+          newString.replace(" ","^");
         }
         Serial.println("Setting new characteristic value..");
         Serial.println(newString);
@@ -394,10 +434,9 @@ static void ble_task(void *argp)
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
-    } 
-    // BLE Task is over, listener task can continue to its work.
-    Serial.println("The listener task is resuming now..");
-    vTaskResume(h_listener);
+    }
+    // Serial.println("Listener task is resuming..."); 
+    // vTaskResume(h_listener);
   }
 }
 
@@ -406,42 +445,48 @@ void setup()
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
 
-  barrier = xSemaphoreCreateBinary();
-  assert(barrier);
+  // barrier = xSemaphoreCreateBinary();
+  // assert(barrier);
+
+  hevt = xEventGroupCreate();
+  assert(hevt);
 
   Serial.begin(115200);
-  connectToWiFi();
-  setupMQTT();
-  Serial.println("Starting Arduino BLE Client application...");
-  BLEDevice::init("");
+
+  Serial.println("Starting ESP32 Gateway application...");
 
   delay(2000);  // Allow USB to connect
 
   rc = xTaskCreatePinnedToCore(
-    listener_task,
-    "listenertask",
-    10000,            // Stack Size
+    mqtt_task,
+    "mqtttask",
+    5000,       // Stack Size
     nullptr,
-    1,               // Priortiy
-    &h_listener,     // Task Handle
-    app_cpu          // CPU
+    1,           // Priortiy
+    nullptr,     // Task Handle
+    app_cpu      // CPU
   );
   assert(rc == pdPASS);
-  assert(h_listener);
+  //assert(h_listener);
 
   rc = xTaskCreatePinnedToCore(
     ble_task,
     "bletask",
-    10000,   // Stack Size
+    5000,       // Stack Size
     nullptr,
-    2,      // Priortiy
+    1,           // Priortiy
     nullptr,     // Task Handle
-    app_cpu // CPU
+    app_cpu      // CPU
   );
   assert(rc == pdPASS);
+
+  connectToWiFi();
+  setupMQTT();
+  BLEDevice::init("");
 }
 
 void loop() 
 {
+  // Delete loop task.
   vTaskDelete(nullptr);
 }
