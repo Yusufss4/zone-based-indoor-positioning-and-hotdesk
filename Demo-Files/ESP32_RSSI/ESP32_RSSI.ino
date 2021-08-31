@@ -29,6 +29,22 @@
 #define SIZE 50
 #define DATA_SEND 5000 //Per miliseconds
 #define LOCAL_MQTT_MAX_PACKET_SIZE 1000
+#define WindowLength 10
+
+/* TypeDefs ------------------------------------------------------------------*/
+typedef struct
+{
+  char mac_addr[17];
+  uint32_t History[WindowLength]; /*Array to store values of filter window*/
+  uint32_t Sum;                   /* Sum of filter window's elements*/
+  uint32_t WindowPointer;         /* Pointer to the first element of window*/
+} FilterTypeDef;
+
+typedef struct
+{
+  char mac_addr[SIZE][17];
+  unsigned int head;
+} queue_t;
 
 //static SemaphoreHandle_t barrier;
 static SemaphoreHandle_t mutex;
@@ -46,10 +62,85 @@ double filtered_rssi = 0;
 double filtered_meter = 0;
 double raw_meter = 0;
 double raw_rssi = 0;
-char device_address[17] = {0};
+char device_addr[17] = {0};
 uint8_t message_char_buffer[LOCAL_MQTT_MAX_PACKET_SIZE];
 
+FilterTypeDef filter_struct[10];
+queue_t addr_queue;
+unsigned int filter_index = 0;
+int filtered_data = 0;
 
+void queue_init()
+{
+  for (int i = 0; i <= SIZE; i++)
+  {
+    addr_queue.mac_addr[i] = {0};
+  }
+  addr_queue.head = 0;
+}
+
+void queue_enqueue(char device_addr[17])
+{
+  strcpy(addr_queue.mac_addr[addr_queue.head], device_addr);
+  addr_queue.head += addr_queue.head + 1 % SIZE;
+}
+
+// Search the mac address queue, if it finds, return false
+bool queue_search(char *device_addr)
+{
+  for (size_t i = 0; i < SIZE; i++)
+  {
+    if (addr_queue.mac_addr[i] == device_addr)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+  * @brief  This function initializes filter's data structure.
+	* @param  filter_struct : Data structure
+  * @retval None.
+  */
+void filter_init(char *device_addr, unsigned int filter_index)
+{
+  strcpy(filter_struct[filter_index].mac_addr, device_addr);
+  filter_struct[filter_index].History[WindowLength] = {0};
+  filter_struct[filter_index].Sum = 0;
+  filter_struct[filter_index].WindowPointer = 0;
+}
+
+/**
+  * @brief  This function filters data with moving average filter.
+	* @param  raw_data : input raw sensor data.
+	* @param  filter_struct : Data structure
+  * @retval Filtered value.
+  */
+uint32_t moving_average_compute(uint32_t raw_data, FilterTypeDef *filter_struct)
+{
+  filter_struct->Sum += raw_data;
+  filter_struct->Sum -= filter_struct->History[filter_struct->WindowPointer];
+  filter_struct->History[filter_struct->WindowPointer] = raw_data;
+  if (filter_struct->WindowPointer < WindowLength - 1)
+  {
+    filter_struct->WindowPointer += 1;
+  }
+  else
+  {
+    filter_struct->WindowPointer = 0;
+  }
+  return filter_struct->Sum / WindowLength;
+}
+
+int filter_search(char *device_addr, unsigned int index)
+{
+  for (size_t i = 0; i <= index; i++)
+  {
+    if (filter_struct[i].mac_addr == device_addr)
+      return i;
+  }
+}
 void reconnectToTheBroker()
 {
   int numberOfConnectionsTried = 0;
@@ -96,9 +187,9 @@ void publishScanDataToMQTT(int filtered_meter, char *device_address)
   String payloadString = "{\"e\":[";
 
   payloadString += "{\"m\":\"";
-  payloadString += String(device_address);
+  payloadString += String(device_addr);
   payloadString += "\",\"r\":";
-  payloadString += String(filtered_meter);
+  payloadString += String(filtered_data);
   payloadString += "}";
 
   // SenML ends. Add this stations MAC
@@ -141,87 +232,120 @@ void setupMQTT()
   mqttClient.setKeepAlive(60);
 }
 
+/* What is the problem that'll be solved in a couple hours? :D
+   1- We have to filter the raw RSSI values that comes from different devices.
+   
+   How to take an action for solving this problem?
+   1- We have to save the mac address of the devices that's been scanning.
+   2- Compare their mac address and filter it according to their mac.
+
+ */
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
   void onResult(BLEAdvertisedDevice advertisedDevice)
   {
+    int raw_rssi_val = advertisedDevice.getRSSI();
+    strcpy(device_addr, advertisedDevice.getAddress().toString().c_str());
+
+    Serial.println("Raw RSSI val: ");
+    Serial.print(raw_rssi_val);
+
     if (advertisedDevice.haveServiceUUID() || advertisedDevice.haveName())
     {
-      BaseType_t rc;
-
-      if (dataIndex == DATA_SIZE)
+      // Search the mac address, if it is a unique one, save it to the queue.
+      // If returns 1, the adress is unique, save the address and create a new filter struct.
+      // If returns 0, the adress is not unique, peer the right filter struct and filter the data.
+      if (queue_search(device_addr))
       {
-        dataIndex = 0;
-      }
+        Serial.println("adding new mac address to queue");
+        // Save the mac address of the device to queue
+        queue_enqueue(device_addr);
 
-      data[dataIndex] = advertisedDevice.getRSSI();
-
-      if (dataIndex == DATA_SIZE - 1)
-      {
-        temp = data[dataIndex];
-      }
-
-      //        SimpleKalmanFilter simpleKalmanFilter(2, 2, 0.01);
-      raw_rssi = data[dataIndex];
-
-      if (dataIndex - 1 != -1)
-      {
-        filtered_rssi = (0.75) * data[dataIndex] + (0.25) * data[dataIndex - 1];
+        // Create a new filter struct and initiate its variables.
+        filter_init(device_addr, filter_index);
+        filter_index++;
       }
       else
       {
-        filtered_rssi = (0.75) * data[dataIndex] + (0.25) * temp;
+        Serial.println("Filtering the value for: ");
+        Serial.print(device_addr);
+        // Find the right filter queue according to their mac address.
+        unsigned int filter_pointer = filter_search(device_addr, filter_index);
+        // Filter the raw data
+        filtered_data = moving_average_compute(raw_rssi_val, &filter_struct[filter_pointer]);
+        Serial.println("Filtered data: ");
+        Serial.print(filtered_data);
+        // Signal to mqtt task
+        xEventGroupSetBits(hevt, MQTT_CHG);
       }
+    }
 
-      raw_meter = pow(10, (double(TX_POWER - raw_rssi) / (10 * N)));
+    // if (dataIndex == DATA_SIZE)
+    // {
+    //   dataIndex = 0;
+    // }
 
-      filtered_meter = pow(10, (double(TX_POWER - filtered_rssi) / (10 * N)));
+    // data[dataIndex] = advertisedDevice.getRSSI();
 
-      Serial.print("MAC Adress: ");
-      pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
+    // if (dataIndex == DATA_SIZE - 1)
+    // {
+    //   temp = data[dataIndex];
+    // }
 
-      strcpy(device_address, advertisedDevice.getAddress().toString().c_str());
+    // //        SimpleKalmanFilter simpleKalmanFilter(2, 2, 0.01);
+    // raw_rssi = data[dataIndex];
 
-      Serial.println(pMAC_Address->toString().c_str());
-      Serial.print("Raw rssi: ");
-      Serial.println(raw_rssi);
-      Serial.print("filtered rssi: ");
-      Serial.println(filtered_rssi);
+    // if (dataIndex - 1 != -1)
+    // {
+    //   filtered_rssi = (0.75) * data[dataIndex] + (0.25) * data[dataIndex - 1];
+    // }
+    // else
+    // {
+    //   filtered_rssi = (0.75) * data[dataIndex] + (0.25) * temp;
+    // }
 
-      Serial.print("Raw Meter: ");
-      Serial.println(raw_meter);
-      Serial.print("Filtered Meter: ");
-      Serial.println(filtered_meter);
+    // raw_meter = pow(10, (double(TX_POWER - raw_rssi) / (10 * N)));
 
-      if (dataIndex - 1 != -1)
-      {
-        Serial.print("Previous Data Index: ");
-        Serial.println(dataIndex - 1);
-        Serial.print("previous Data: ");
-        Serial.println(data[dataIndex - 1]);
-      }
-      else
-      {
+    // filtered_meter = pow(10, (double(TX_POWER - filtered_rssi) / (10 * N)));
 
-        Serial.print("Previous Data Index: ");
-        Serial.println(DATA_SIZE - 1);
-        Serial.print("previous Data: ");
-        Serial.println(temp);
-      }
+    // Serial.print("MAC Adress: ");
+    // pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
 
-      Serial.print("Current Data Index: ");
-      Serial.println(dataIndex);
-      Serial.print("Current Data: ");
-      Serial.println(data[dataIndex]);
-      dataIndex++;
+    // strcpy(device_address, advertisedDevice.getAddress().toString().c_str());
 
-      // Give the semaphore
-      //Serial.println("Giving the semaphore to the MQTT Task...");
-      //rc = xSemaphoreGive(barrier);
-      //assert(rc == pdPASS);
+    // Serial.println(pMAC_Address->toString().c_str());
+    // Serial.print("Raw rssi: ");
+    // Serial.println(raw_rssi);
+    // Serial.print("filtered rssi: ");
+    // Serial.println(filtered_rssi);
 
-      xEventGroupSetBits(hevt, MQTT_CHG);
-    } 
+    // Serial.print("Raw Meter: ");
+    // Serial.println(raw_meter);
+    // Serial.print("Filtered Meter: ");
+    // Serial.println(filtered_meter);
+
+    // if (dataIndex - 1 != -1)
+    // {
+    //   Serial.print("Previous Data Index: ");
+    //   Serial.println(dataIndex - 1);
+    //   Serial.print("previous Data: ");
+    //   Serial.println(data[dataIndex - 1]);
+    // }
+    // else
+    // {
+
+    //   Serial.print("Previous Data Index: ");
+    //   Serial.println(DATA_SIZE - 1);
+    //   Serial.print("previous Data: ");
+    //   Serial.println(temp);
+    // }
+
+    // Serial.print("Current Data Index: ");
+    // Serial.println(dataIndex);
+    // Serial.print("Current Data: ");
+    // Serial.println(data[dataIndex]);
+    // dataIndex++;
+
   }
 };
 
@@ -254,7 +378,7 @@ void unlock_task()
 static void ble_task(void *argp)
 {
   // SETUP BLE
-  
+
   lock_task();
   Serial.println("Mutex locked in ble task.");
   Serial.println("Scanning...");
@@ -266,7 +390,7 @@ static void ble_task(void *argp)
   pBLEScan->setWindow(99); // less or equal setInterval value
   Serial.println("Mutex unlocked in ble task.");
   unlock_task();
-  
+
   for (;;)
   {
     lock_task();
@@ -307,11 +431,11 @@ static void mqtt_task(void *argp)
     //Serial.println("Taking the semaphore..");
 
     xEventGroupWaitBits(
-      hevt,            // Event group
-      MQTT_CHG,        // bits to wait for
-      pdTRUE,         // clear the bits
-      pdFALSE,         // wait for all bits
-      portMAX_DELAY);  // timeout
+        hevt,           // Event group
+        MQTT_CHG,       // bits to wait for
+        pdTRUE,         // clear the bits
+        pdFALSE,        // wait for all bits
+        portMAX_DELAY); // timeout
 
     lock_task();
     Serial.println("Mutex locked in mqtt task.");
@@ -321,7 +445,7 @@ static void mqtt_task(void *argp)
       Serial.println("Reconnecting to the broker..");
       reconnectToTheBroker();
     }
-    publishScanDataToMQTT(filtered_meter, device_address);
+    publishScanDataToMQTT(filtered_data, device_addr);
     publishDeviceInfoToMQTT();
     Serial.println("Mutex unlocked in mqtt task.");
     unlock_task();
@@ -344,6 +468,11 @@ void setup()
   assert(hevt);
 
   Serial.println("Starting ESP32 RSSI filter application...");
+
+  queue_init();
+  connectToWiFi();
+  setupMQTT();
+  BLEDevice::init("");
 
   delay(2000); // Allow USB to connect
 
@@ -369,10 +498,7 @@ void setup()
       app_cpu  // CPU
   );
   assert(rc == pdPASS);
-
-  connectToWiFi();
-  setupMQTT();
-  BLEDevice::init("");
+  
 }
 
 void loop()

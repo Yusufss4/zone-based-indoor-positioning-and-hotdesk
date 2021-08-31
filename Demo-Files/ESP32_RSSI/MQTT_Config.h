@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "LionGate"
-#define WIFI_PASSWORD        "LBR7F6YBXW2417!'"
+#define WIFI_SSID            "FiberHGW_TP7502_2.4GHz"
+#define WIFI_PASSWORD        "vpD9vkyj"
 
 /* You can change but you dont need to*/
 #define MQTT_SERVER_NAME    "13.93.11.252"
