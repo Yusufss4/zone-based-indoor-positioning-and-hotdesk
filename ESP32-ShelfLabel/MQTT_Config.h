@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "FiberHGW_TP7502_2.4GHz"
-#define WIFI_PASSWORD        "vpD9vkyj"
+#define WIFI_SSID            "Borda Guest"
+#define WIFI_PASSWORD        "healthcare.next"
 
 /* Dont Change !*/
 const char* ca_cert = \

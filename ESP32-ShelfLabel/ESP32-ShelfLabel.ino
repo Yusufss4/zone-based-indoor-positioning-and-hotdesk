@@ -175,7 +175,7 @@ void reconnectToTheBroker() {
     Serial.println("Reconnecting to MQTT Broker..");
     if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
-      digitalWrite(MQTT_LED,HIGH);
+      //digitalWrite(MQTT_LED,HIGH);
       //subscribe to topic
       mqttClient.subscribe("/name");
       mqttClient.subscribe("/next-event");
@@ -183,7 +183,7 @@ void reconnectToTheBroker() {
     else {
       //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
-      digitalWrite(MQTT_LED,LOW);
+      //digitalWrite(MQTT_LED,LOW);
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5) {
@@ -415,8 +415,8 @@ static void ble_task(void *argp)
 
 void setup() 
 {
-  pinMode(MQTT_LED,OUTPUT);
-  digitalWrite(MQTT_LED,LOW);
+  //pinMode(MQTT_LED,OUTPUT);
+  //digitalWrite(MQTT_LED,LOW);
   
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
