@@ -6,7 +6,7 @@
 //What if pixel count is lower than the capacity?
 
 #define NEOPIXEL_PIN 13
-#define PIXEL_COUNT 12
+#define PIXEL_COUNT 24
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 

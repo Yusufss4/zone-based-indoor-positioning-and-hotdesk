@@ -2,12 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "Borda Guest"
-#define WIFI_PASSWORD        "healthcare.next"
-
-//#define WIFI_SSID            "L4"
-//#define WIFI_PASSWORD        "baaaaaaa"
-
+#define WIFI_SSID            "LionGate"
+#define WIFI_PASSWORD        "LBR7F6YBXW2417!'"
 
 /* Dont Change !*/
 const char* ca_cert = \
@@ -45,6 +41,6 @@ const char* ca_cert = \
 #define MQTT_PASSWORD "academy2021"
 
 /* ALWAYS CHANGE!!*/
-#define CLIENT_ID "ESP32Client-ShelfLabel-Ata2"
+#define CLIENT_ID "ESP32Client-ShelfLabel-Berkay"
 
 #endif /* IOT_CONFIGS_H */
