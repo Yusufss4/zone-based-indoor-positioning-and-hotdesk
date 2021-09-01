@@ -365,6 +365,7 @@ static void ble_task(void *argp)
         Serial.println("We are now connected to the BLE Server.");
       } else {
         Serial.println("We have failed to connect to the server; there is nothin more we will do.");
+        Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - abrupt disconnect\", \"warningCode\": 3 }"));
       }
 
       doConnect = false;
