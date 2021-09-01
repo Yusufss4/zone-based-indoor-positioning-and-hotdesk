@@ -5,22 +5,26 @@
 #include <esp_task_wdt.h>
 #include "MQTT_Config.h"
 #include "BLEDevice.h"
-#include <map>
+#include <Dictionary.h>
 
-#define NUMBER_OF_STRING 6
-#define MAX_STRING_SIZE 40
+
+//dictionary settings
+#define _DICT_KEYLEN 40
+#define _DICT_VALLEN 254
 
 #define MQTT_LED 2
-#define BLE_LED 3
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
 
-#define LED 13
+#define NUMBER_OF_STRING 5
+#define MAX_STRING_SIZE 50
+
+Dictionary &dict = *(new Dictionary());
 
 extern bool loopTaskWDTEnabled;
-static TaskHandle_t htask;
 static SemaphoreHandle_t barrier;
+TaskHandle_t h_listener;
 
 // Map
 std::map<char*, char*> device;
@@ -41,7 +45,7 @@ typedef struct message
   char device_uuid_val[37];
   char service_uuid_val[37];
   char char_uuid_val[37];
-  char employee_id_val[37];
+  char employee_id_val[55];
 } message_t;
 
 typedef struct event
@@ -68,6 +72,7 @@ static char deviceMacAddress[18];
 //E54B0001-67F5-479E-8711-B3B99198CE6C
 //e0:5a:5a:c8:36:ac
 //3c:71:bf:f5:5d:58
+//94:B9:7E:E4:7F:90
 
 BLEUUID device_uuid("");
 BLEUUID service_uuid("");
@@ -75,8 +80,9 @@ BLEUUID char_uuid("");
 
 bool doConnect = false;
 bool connected = false;
-BLERemoteCharacteristic *pRemoteCharacteristic;
-BLEAdvertisedDevice *myDevice;
+bool doScan = false;
+BLERemoteCharacteristic* pRemoteCharacteristic;
+BLEAdvertisedDevice* myDevice;
 
 void notifyCallback(
     BLERemoteCharacteristic *pBLERemoteCharacteristic,
@@ -180,57 +186,11 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         BLEDevice::getScan()->stop();
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
         doConnect = true;
-        Serial.print("doConnect = true");
-      }
-      else
-        Serial.println("Name string is same with the previous one, don't update the screen");
-    } // Found our server
-  }   // onResult
-};    // MyAdvertisedDeviceCallbacks
+        doScan = true;
 
-/* 
-  1- Create a map
-  2- If the UUID value isn't saved before, save it and pair with name string
-  3- If the UUID value is saved before, compare its name string with new data.
-  4- If it returns equal, return false 
-  5- If it doesn't return equal, return true
-
-*/
-bool control_refresh()
-{
-  static char *name_val;
-  // If the UUID value isn't saved before, save it and pair with name string
-  if (device.find(msg.device_uuid_val) == device.end())
-  {
-    //TODO: Create a buffer for UUID and name data.
-    Serial.println("Control refresh: Saved UUID value, paired with name string");
-    name_val = msg.employee_id_val;
-    device.insert(std::pair<char*, char*>(msg.device_uuid_val, name_val));
-  }
-  // If the UUID value is saved before, compare its name string with new data.
-  else
-  {
-    Serial.println("Control refresh: UUID value saved before, comparing with new string");
-    // If it returns equal, return false
-    if (device.find(msg.device_uuid_val)->second == msg.employee_id_val)
-    {
-      Serial.println("Control Refresh: Map name");
-      Serial.println(device.find(msg.device_uuid_val)->second);
-      Serial.println("Control Refresh: new data name");
-      Serial.println(msg.employee_id_val);
-      Serial.println("Control refresh: they are equal, returning false");
-      return false;
-    }
-    // If it doesn't return equal, save the new name string and return true
-    else
-    {
-      Serial.println("Control refresh: they are not equal, saving the new name string");
-      device.find(msg.device_uuid_val)->second = msg.employee_id_val;
-    }
-  }
-  Serial.println("Control refresh: Returning true");
-  return true;
-}
+      } // Found our server
+    } // onResult
+}; // MyAdvertisedDeviceCallbacks
 
 void reconnectToTheBroker()
 {
@@ -238,10 +198,9 @@ void reconnectToTheBroker()
   while (!mqttClient.connected())
   {
     Serial.println("Reconnecting to MQTT Broker..");
-    if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD))
-    {
+    if (mqttClient.connect(CLIENT_ID, MQTT_USER_NAME, MQTT_PASSWORD)) {
       Serial.println("MQTT Broker Connected.");
-      digitalWrite(MQTT_LED,HIGH);
+      digitalWrite(MQTT_LED, HIGH);
       //subscribe to topic
       mqttClient.subscribe("/name");
       mqttClient.subscribe("/next-event");
@@ -250,7 +209,7 @@ void reconnectToTheBroker()
     {
       //MQTT Could not reconnect, wifi/esp32 error
       Serial.print("Connection failed, rc=");
-      digitalWrite(MQTT_LED,LOW);
+      digitalWrite(MQTT_LED, LOW);
       Serial.print(mqttClient.state());
       numberOfConnectionsTried++;
       if (numberOfConnectionsTried > 5)
@@ -266,12 +225,11 @@ void reconnectToTheBroker()
 void connectToWiFi()
 {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.println("WiFi is diconnected.");
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
   Serial.print("Connected to the WiFi.");
+
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -313,21 +271,17 @@ void callback(char *topic, byte *payload, unsigned int length)
       msg.char_uuid_val[7] = '2';
       strcpy(msg.employee_id_val, strtok(NULL, delimeter));
 
-      Serial.print("Device uuid: ");
-      Serial.println(msg.device_uuid_val);
-      Serial.print("Service uuid: ");
-      Serial.println(msg.service_uuid_val);
-      Serial.print("Characteristic uuid: ");
-      Serial.println(msg.char_uuid_val);
-      Serial.print("Employee ID: ");
-      Serial.println(msg.employee_id_val);
+      Serial.print("Device uuid: "); Serial.println(msg.device_uuid_val);
+      Serial.print("Service uuid: "); Serial.println(msg.service_uuid_val);
+      Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
+      Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
+
 
       // Transmit the message data to queue.
       transmit_flag = true;
     }
     //room reservation
-    else if (strcmp(topic, "/next-event") == 0)
-    {
+    else if (strcmp(topic, "/next-event") == 0) {
       topic_flag = true;
       Serial.println("Detected message at the topic name");
       strcpy(evt.device_uuid_val, strtok(NULL, delimeter));
@@ -338,16 +292,11 @@ void callback(char *topic, byte *payload, unsigned int length)
       strcpy(evt.event_status_val, strtok(NULL, delimeter));
       strcpy(evt.event_time_val, strtok(NULL, delimeter));
 
-      Serial.print("Device uuid: ");
-      Serial.println(evt.device_uuid_val);
-      Serial.print("Service uuid: ");
-      Serial.println(evt.service_uuid_val);
-      Serial.print("Characteristic uuid: ");
-      Serial.println(evt.char_uuid_val);
-      Serial.print("Event Status: ");
-      Serial.println(evt.event_status_val);
-      Serial.print("Event Time: ");
-      Serial.println(evt.event_time_val);
+      Serial.print("Device uuid: "); Serial.println(evt.device_uuid_val);
+      Serial.print("Service uuid: "); Serial.println(evt.service_uuid_val);
+      Serial.print("Characteristic uuid: "); Serial.println(evt.char_uuid_val);
+      Serial.print("Event Status: "); Serial.println(evt.event_status_val);
+      Serial.print("Event Time: "); Serial.println(evt.event_time_val);
 
       // Transmit the message data to queue.
       transmit_flag = true;
@@ -359,8 +308,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
 }
 
-void setupMQTT()
-{
+void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
   // set the callback function
@@ -368,13 +316,15 @@ void setupMQTT()
   mqttClient.setKeepAlive(60);
 }
 
-// TODO: Create a mqtt_task
+
+// TODO
+
 // Connect to broker.
 // Take the data package.
 // Parse it.
 // Add to the queue struct.
 // Signal to the BLE Task.
-static void mqtt_task(void *argp)
+static void listener_task(void *argp)
 {
   esp_err_t er;
 
@@ -416,7 +366,6 @@ static void mqtt_task(void *argp)
 // Signal to the listener task.
 static void ble_task(void *argp)
 {
-
   BaseType_t s;
   BaseType_t rc;
 
@@ -427,8 +376,7 @@ static void ble_task(void *argp)
     Serial.println("Taking the semaphore..");
 
     // Transmit to BLEUUID
-    if (topic_flag)
-    {
+    if (topic_flag) {
       device_uuid = BLEUUID(evt.device_uuid_val);
       service_uuid = BLEUUID(evt.service_uuid_val);
       char_uuid = BLEUUID(evt.char_uuid_val);
@@ -445,6 +393,9 @@ static void ble_task(void *argp)
 
     // Connect to ESL according to the UUID value in the Queue.
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+
+    delay(1000);
+
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -459,6 +410,7 @@ static void ble_task(void *argp)
       else
       {
         Serial.println("We have failed to connect to the server; there is nothin more we will do.");
+        Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - abrupt disconnect\", \"warningCode\": 3 }"));
       }
 
       doConnect = false;
@@ -466,6 +418,8 @@ static void ble_task(void *argp)
     else
     {
       Serial.println("doConnect = false");
+
+
       Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
     }
 
@@ -473,46 +427,80 @@ static void ble_task(void *argp)
     {
       String newString = "";
 
-      if (topic_flag)
-      {
-        char *temp;
+
+      if (topic_flag) {
+        char* temp;
+        String uuid_val = evt.device_uuid_val;
         temp = strcat(evt.event_status_val, "^");
         newString = strcat(temp, evt.event_time_val);
-        Serial.println("Setting new characteristic value..");
-        Serial.println(newString);
+        if (dict[uuid_val] != newString) {
+          Serial.println("Setting new characteristic value..");
+          Serial.println(newString);
+          dict(uuid_val, newString);
+          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+        } else {
+          Serial.println("The charactheristic was the same... Doing nothing...");
+        }
       }
-      else
-      {
-        if (sizeof(msg.employee_id_val) > 20)
-        {
-          char temp[20] = {0};
-          strncpy(temp, msg.employee_id_val, 20);
-          temp[19] = '.';
-          newString = temp;
-          newString.replace(" ", "^");
+      else {
+        String uuid_val = msg.device_uuid_val;
+        String id_val = msg.employee_id_val;
+        if (dict[uuid_val] != id_val) {
+          if (sizeof(msg.employee_id_val) > 20) {
+            char temp[20] = {0};
+            strncpy(temp, msg.employee_id_val, 20);
+            temp[19] = '.';
+            newString = temp;
+            newString.replace(" ", "^");
+          } else {
+            newString = msg.employee_id_val;
+            newString.replace(" ", "^");
+          }
+          Serial.println("Setting new characteristic value..");
+          Serial.println(newString);
+          dict(uuid_val, id_val);
+          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
         }
-        else
-        {
-          newString = msg.employee_id_val;
-          newString.replace(" ", "^");
+
+
+
+        //          //20+ char
+        //          char temp[20] = {0};
+        //          int i;
+        //          int msg_num = strlen(msg.employee_id_val) / 20;
+        //          Serial.println(msg_num);
+        //          for (i = 0; i < (msg_num + 1); i++) {
+        //            //strncpy(temp, msg.employee_id_val,20);
+        //            memcpy(temp, &msg.employee_id_val[i * 20], 20);
+        //            //Serial.println(temp);
+        //            if (i == msg_num) {
+        //              temp[strlen(msg.employee_id_val) % 20] = '#';
+        //            }
+        //            newString = temp;
+        //            newString.replace(" ", "^");
+        //            Serial.println("Setting new characteristic value..");
+        //            Serial.println(newString);
+        //            dict(uuid_val, id_val);
+        //            pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+        //            delay(10000);
+        //          }
+
+        else {
+          Serial.println("The charactheristic was the same... Doing nothing...");
         }
-        Serial.println("Setting new characteristic value..");
-        Serial.println(newString);
       }
 
       // Set the characteristic's value to be the array of bytes that is actually a string.
-      pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+      //pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
     }
-    // Serial.println("Listener task is resuming...");
-    // vTaskResume(h_listener);
   }
 }
 
 void setup()
 {
-  pinMode(MQTT_LED,OUTPUT);
-  digitalWrite(MQTT_LED,LOW);
+  pinMode(MQTT_LED, OUTPUT);
+  digitalWrite(MQTT_LED, LOW);
 
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
@@ -544,26 +532,26 @@ void setup()
   }
 
   rc = xTaskCreatePinnedToCore(
-      mqtt_task,
-      "mqtttask",
-      10000, // Stack Size
-      nullptr,
-      1,       // Priortiy
-      nullptr, // Task Handle
-      app_cpu  // CPU
-  );
+         listener_task,
+         "listenertask",
+         10000,            // Stack Size
+         nullptr,
+         1,               // Priortiy
+         &h_listener,     // Task Handle
+         app_cpu          // CPU
+       );
   assert(rc == pdPASS);
-  //assert(h_listener);
+  assert(h_listener);
 
   rc = xTaskCreatePinnedToCore(
-      ble_task,
-      "bletask",
-      10000, // Stack Size
-      nullptr,
-      1,       // Priortiy
-      nullptr, // Task Handle
-      app_cpu  // CPU
-  );
+         ble_task,
+         "bletask",
+         10000,   // Stack Size
+         nullptr,
+         1,      // Priortiy
+         nullptr,     // Task Handle
+         app_cpu // CPU
+       );
   assert(rc == pdPASS);
 }
 
