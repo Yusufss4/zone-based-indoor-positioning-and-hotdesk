@@ -391,10 +391,17 @@ static void ble_task(void *argp)
 
       if (topic_flag) {
         char* temp;
+        String uuid_val = evt.device_uuid_val;
         temp = strcat(evt.event_status_val, "^");
         newString = strcat(temp, evt.event_time_val);
-        Serial.println("Setting new characteristic value..");
-        Serial.println(newString);
+        if (dict[uuid_val] != newString) {
+          Serial.println("Setting new characteristic value..");
+          Serial.println(newString);
+          dict(uuid_val, newString);
+          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+        } else {
+          Serial.println("The charactheristic was the same... Doing nothing...");
+        }
       }
       else {
         String uuid_val = msg.device_uuid_val;
