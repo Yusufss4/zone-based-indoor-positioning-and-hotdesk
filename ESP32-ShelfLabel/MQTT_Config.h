@@ -1,6 +1,9 @@
 #ifndef MQTT_CONFIG_H
 #define MQTT_CONFIG_H
 
+//#define WIFI_SSID            "FiberHGW_TP7502_2.4GHz"
+//#define WIFI_PASSWORD        "vpD9vkyj"
+
 /* WiFi setup Change Yours*/
 #define WIFI_SSID            "Borda Guest"
 #define WIFI_PASSWORD        "healthcare.next"
