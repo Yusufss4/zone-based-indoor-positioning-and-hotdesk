@@ -2,7 +2,7 @@
 #define Globals_h
 #include <Arduino.h>
 
-#define BUFFER_SIZE 50
+#define BUFFER_SIZE 100
 
 typedef struct {
   char address[17];   // 67:f1:d2:04:cd:5d

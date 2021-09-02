@@ -11,12 +11,12 @@
 #include <BLEAdvertisedDevice.h>
 //#include <BLEBeacon.h>
 
-int scanTime = 10; //In seconds
+int scanTime = 1; //In seconds
 static BLEAddress *pMAC_Address;
 BLEScan* pBLEScan;
 
 #define BLE_INTERVAL 100
-#define BLE_WINDOW 40
+#define BLE_WINDOW 99
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
@@ -31,6 +31,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       {
         pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
         buffer[bufferIndex].rssi = advertisedDevice.getRSSI();
+        //Serial.println("strcpy (buffer[bufferIndex].address, advertisedDevice.getAddress().toString().c_str());");
         strcpy (buffer[bufferIndex].address, advertisedDevice.getAddress().toString().c_str());
         bufferIndex++;
       }
@@ -39,18 +40,19 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 void BLEScannerSetup() {
   Serial.println("Scanning...");
+  esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(),true);
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
   pBLEScan->setInterval(BLE_INTERVAL);
   pBLEScan->setWindow(BLE_WINDOW);  // less or equal setInterval value
 }
 
 void BLEScannerLoop() {
+  Serial.println("BLEScanResults foundDevices = pBLEScan->start(scanTime, false)");
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+  Serial.println("pBLEScan->clearResults();");
   pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
-  delete pMAC_Address;
-  pMAC_Address = NULL;
-
+  Serial.println("delete pMAC_Address;");
 }

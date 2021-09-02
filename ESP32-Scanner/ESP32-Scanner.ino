@@ -13,7 +13,7 @@
 #include "Globals.h"
 
 #define DATA_SEND 5000 //Per miliseconds
-#define LOCAL_MQTT_MAX_PACKET_SIZE 1000
+#define LOCAL_MQTT_MAX_PACKET_SIZE 2000
 #define RESET_PIN 26 //17
 #define WIFI_INFO_LED 27 //12 - BLUE First Led
 #define MQTT_INFO_LED 14 //14 - GREEN Second Led
@@ -83,12 +83,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void setupMQTT() {
   //wifiClient.setCACert(ca_cert);
   mqttClient.setServer(MQTT_SERVER_NAME, MQTT_PORT);
-  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
+  /*if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
     Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
-  }
-  else {
+    }
+    else {
     Serial.print("Cant set the buffer..:(");
-  }
+    }*/
   // set the callback function
 #ifndef ESP32_SCANNER
   mqttClient.setCallback(callback);
@@ -193,10 +193,14 @@ void loop() {
     connectToWiFi();
   }
 
+  Serial.println("mqttClient.loop()");
   mqttClient.loop();
+  Serial.println("checkButton()");
   checkButton();
   //Scan the devices
+  Serial.println("BLEScannerLoop()");
   BLEScannerLoop();
+  Serial.println("printBuffer()");
   printBuffer(buffer, bufferIndex);
 
   /* filterBuffer(buffer,uniqueBuffer,bufferIndex,BUFFER_SIZE); Actually should be like this.
@@ -247,13 +251,14 @@ int filterBuffer(BeaconData *filteredBuffer, int localBufferIndex, int bufferSiz
           deviceCounted[i] = 1;  // Mark device as counted
         }
       }
+      if(counter>2) {
       numberOfUniqeAdresses++;
       Serial.print("MAC: ");
       Serial.print(buffer[j].address);
       Serial.print(" : COUNTER: ");
       Serial.println(counter);
       strcpy(filteredBuffer[numberOfUniqeAdresses - 1].address, buffer[j].address);
-      filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter;
+      filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter; } 
       counter = 0; currentRssi = 0;
     }
   }
@@ -274,6 +279,12 @@ void printBuffer(BeaconData *printBuffer, int bufferSize) {
 void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
 
   Serial.print("Publishing the data...");
+  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
   String payloadString = "{\"e\":[";
   for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
     payloadString += "{\"m\":\"";
@@ -301,9 +312,21 @@ void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
   payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
 
   payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
   int result = mqttClient.publish("/scn-dvc", message_char_buffer, payloadString.length(), false);
   Serial.print("PUB Result: ");
   Serial.println(result);
+  if (mqttClient.setBufferSize(50)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
   // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
 }
 
