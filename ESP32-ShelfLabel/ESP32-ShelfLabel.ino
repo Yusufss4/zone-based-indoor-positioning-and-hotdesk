@@ -12,6 +12,8 @@
 #define _DICT_VALLEN 254
 
 #define MQTT_LED 2
+#define BLE_LED 12
+#define WAR_LED 27
 
 #define DATA_SEND 5000 //Per miliseconds
 #define MQTT_MAX_PACKET_SIZE 1000
@@ -33,6 +35,11 @@ BLEClient*  pClient;
 BLERemoteService* pRemoteService;
 
 bool topic_flag = false; //0 = smartdesk / 1 = smartroom
+
+String uuid_val;
+String id_val;
+String uuid_event;
+String event_str;
 
 typedef struct message {
   char device_uuid_val[37];
@@ -65,6 +72,8 @@ static char deviceMacAddress[18];
 //e0:5a:5a:c8:36:ac
 //3c:71:bf:f5:5d:58
 //94:B9:7E:E4:7F:90
+//08:3A:F2:6E:10:2C
+//3C:71:BF:F5:5D:58
 
 BLEUUID device_uuid("");
 BLEUUID service_uuid("");
@@ -250,9 +259,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Characteristic uuid: "); Serial.println(msg.char_uuid_val);
       Serial.print("Employee ID: "); Serial.println(msg.employee_id_val);
 
-
-      // Transmit the message data to queue.
-      transmit_flag = true;
+      uuid_val = msg.device_uuid_val;
+      id_val = msg.employee_id_val;
+      if (dict[uuid_val] != id_val) {
+        //dict(uuid_val, id_val);
+        // Transmit the message data to queue.
+        transmit_flag = true;
+      } else {
+        Serial.println("The charactheristic was the same... Doing nothing...");
+      }
     }
     //room reservation
     else if (strcmp(topic, "/next-event") == 0) {
@@ -272,8 +287,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.print("Event Status: "); Serial.println(evt.event_status_val);
       Serial.print("Event Time: "); Serial.println(evt.event_time_val);
 
-      // Transmit the message data to queue.
-      transmit_flag = true;
+
+      char* temp;
+      uuid_event = evt.device_uuid_val;
+      temp = strcat(evt.event_status_val, "^");
+      event_str = strcat(temp, evt.event_time_val);
+      if (dict[uuid_event] != event_str) {
+        // Transmit the message data to queue.
+        transmit_flag = true;
+      } else {
+        Serial.println("The charactheristic was the same... Doing nothing...");
+      }
+
+
     }
   }
   else {
@@ -371,57 +397,70 @@ static void ble_task(void *argp)
     if (doConnect == true) {
       if (connectToServer()) {
         Serial.println("We are now connected to the BLE Server.");
+        digitalWrite(BLE_LED, HIGH);
       } else {
         Serial.println("We have failed to connect to the server; there is nothin more we will do.");
-        Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - abrupt disconnect\", \"warningCode\": 3 }"));
+        Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3C:71:BF:F5:5D:58\",\"warningExp\": \"ShelfLabel - abrupt disconnect\", \"warningCode\": 3 }"));
+        dict(uuid_val, "error");
+        digitalWrite(BLE_LED, LOW);
+        digitalWrite(WAR_LED, HIGH);
+        delay(250);
+        digitalWrite(WAR_LED, LOW);
+        delay(250);
+        digitalWrite(WAR_LED, HIGH);
+        delay(250);
+        digitalWrite(WAR_LED, LOW);
       }
 
       doConnect = false;
-    }
-    else {
+    } else {
       Serial.println("doConnect = false");
 
 
-      Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3c:71:bf:f5:5d:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
+      Serial.println(mqttClient.publish("/warning", "{ \"mac\": \"3C:71:BF:F5:5D:58\",\"warningExp\": \"ShelfLabel - UUID not found\", \"warningCode\": 2 }"));
+      dict(uuid_val, "error");
+      digitalWrite(BLE_LED, LOW);
+      digitalWrite(WAR_LED, HIGH);
+      delay(500);
+      digitalWrite(WAR_LED, LOW);
     }
 
     if (connected) {
       String newString = "";
-
-
       if (topic_flag) {
-        char* temp;
-        String uuid_val = evt.device_uuid_val;
-        temp = strcat(evt.event_status_val, "^");
-        newString = strcat(temp, evt.event_time_val);
-        if (dict[uuid_val] != newString) {
-          Serial.println("Setting new characteristic value..");
-          Serial.println(newString);
-          dict(uuid_val, newString);
-          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
-        } else {
-          Serial.println("The charactheristic was the same... Doing nothing...");
-        }
+        newString = event_str;
+        dict(uuid_event, event_str);
+        Serial.println(newString);
+        pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+
       }
       else {
-        String uuid_val = msg.device_uuid_val;
-        String id_val = msg.employee_id_val;
-        if (dict[uuid_val] != id_val) {
-          if (sizeof(msg.employee_id_val) > 20) {
-            char temp[20] = {0};
-            strncpy(temp, msg.employee_id_val, 20);
-            temp[19] = '.';
-            newString = temp;
-            newString.replace(" ", "^");
-          } else {
-            newString = msg.employee_id_val;
-            newString.replace(" ", "^");
-          }
-          Serial.println("Setting new characteristic value..");
-          Serial.println(newString);
-          dict(uuid_val, id_val);
-          pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+        if (sizeof(msg.employee_id_val) > 20) {
+          char temp[20] = {0};
+          strncpy(temp, msg.employee_id_val, 20);
+          temp[19] = '.';
+          newString = temp;
+          newString.replace(" ", "^");
+
+        } else {
+          newString = msg.employee_id_val;
+          newString.replace(" ", "^");
         }
+        Serial.println("Setting new characteristic value..");
+        newString.replace("ğ", "g");
+        newString.replace("ç", "c");
+        newString.replace("ü", "u");
+        newString.replace("ö", "o");
+        newString.replace("ş", "s");
+        newString.replace("Ğ", "G");
+        newString.replace("Ç", "C");
+        newString.replace("Ü", "U");
+        newString.replace("Ö", "O");
+        newString.replace("Ş", "S");
+        Serial.println(newString);
+        dict(uuid_val, id_val);
+        pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
+        //}
 
 
 
@@ -446,14 +485,15 @@ static void ble_task(void *argp)
         //            delay(10000);
         //          }
 
-        else {
-          Serial.println("The charactheristic was the same... Doing nothing...");
-        }
+        //else {
+        //  Serial.println("The charactheristic was the same... Doing nothing...");
+        //}
       }
 
       // Set the characteristic's value to be the array of bytes that is actually a string.
       //pRemoteCharacteristic->writeValue(newString.c_str(), newString.length());
       pClient->disconnect();
+      digitalWrite(BLE_LED, LOW);
     }
   }
 }
@@ -462,6 +502,10 @@ void setup()
 {
   pinMode(MQTT_LED, OUTPUT);
   digitalWrite(MQTT_LED, LOW);
+  pinMode(BLE_LED, OUTPUT);
+  digitalWrite(BLE_LED, LOW);
+  pinMode(WAR_LED, OUTPUT);
+  digitalWrite(WAR_LED, LOW);
 
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
