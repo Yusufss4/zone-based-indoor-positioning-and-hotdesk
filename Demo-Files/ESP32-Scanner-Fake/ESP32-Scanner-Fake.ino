@@ -17,7 +17,9 @@
 #define RESET_PIN 26 //17
 #define WIFI_INFO_LED 27 //12 - BLUE First Led
 #define MQTT_INFO_LED 14 //14 - GREEN Second Led
-#define BLE_INFO_LED 12 //27 - YELLOW Third Led 
+#define BLE_INFO_LED 12 //27 - YELLOW Third Led
+
+String KITCHEN_DEVICE_MAC_ADDRESS = "F4:CF:A2:EF:F0:D8";
 
 //Change Config File to Connect the MQTT Broker and WiFi
 #include "MQTT_Config.h"
@@ -30,7 +32,7 @@ PubSubClient mqttClient(wifiClient);
 WiFiManager wm;
 
 uint8_t bufferIndex = 0; // Found devices counter
-int numberOfBLELoops = 0;
+//int numberOfBLELoops = 0;
 BeaconData buffer[BUFFER_SIZE];
 uint8_t message_char_buffer[LOCAL_MQTT_MAX_PACKET_SIZE];
 char deviceMacAddress[18];
@@ -201,16 +203,17 @@ void loop() {
   //Scan the devices
   Serial.println("BLEScannerLoop()");
 
-  if(numberOfBLELoops <= 8) {
-  numberOfBLELoops++;
-  BLEScannerLoop();
-  Serial.println(numberOfBLELoops);
+  /*if (numberOfBLELoops <= 8) {
+    numberOfBLELoops++;
+    BLEScannerLoop();
+    Serial.println(numberOfBLELoops);
   }
   else {
     ESP.restart();
     numberOfBLELoops = 0;
   }
-  
+*/
+  BLEScannerLoop();
   Serial.println("printBuffer()");
   printBuffer(buffer, bufferIndex);
 
@@ -224,8 +227,11 @@ void loop() {
 
   /* -- BLE DEBUG -- */
   char *myMacAdress = "ac:23:3f:a3:35:68";
-  int threshold = -200;
+  int threshold = -73;
   debugIsPeopleInTheRoom(uniqueBuffer, numberOfDevicesFound, myMacAdress, threshold);
+
+  Serial.println("Fake - numberOfPeopleInTheRoom Calculator");
+  numberOfPeopleInTheCalculator(uniqueBuffer, numberOfDevicesFound, threshold);
   /* -- BLE DEBUG -- */
 
   /* -- MQTT DEBUG -- */
@@ -262,14 +268,15 @@ int filterBuffer(BeaconData *filteredBuffer, int localBufferIndex, int bufferSiz
           deviceCounted[i] = 1;  // Mark device as counted
         }
       }
-      if(counter>2) {
-      numberOfUniqeAdresses++;
-      Serial.print("MAC: ");
-      Serial.print(buffer[j].address);
-      Serial.print(" : COUNTER: ");
-      Serial.println(counter);
-      strcpy(filteredBuffer[numberOfUniqeAdresses - 1].address, buffer[j].address);
-      filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter; } 
+      if (counter > 2) {
+        numberOfUniqeAdresses++;
+        Serial.print("MAC: ");
+        Serial.print(buffer[j].address);
+        Serial.print(" : COUNTER: ");
+        Serial.println(counter);
+        strcpy(filteredBuffer[numberOfUniqeAdresses - 1].address, buffer[j].address);
+        filteredBuffer[numberOfUniqeAdresses - 1].rssi = currentRssi / counter;
+      }
       counter = 0; currentRssi = 0;
     }
   }
@@ -289,56 +296,7 @@ void printBuffer(BeaconData *printBuffer, int bufferSize) {
 
 void publishScanDataToMQTT(BeaconData *uniqueBuffer, int numberOfDevicesFound) {
 
-  Serial.print("Publishing the data...");
-  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
-    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
-  }
-  else {
-    Serial.print("Cant set the buffer..:(");
-  }
-  String payloadString = "{\"e\":[";
-  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
-    payloadString += "{\"m\":\"";
-    payloadString += String(uniqueBuffer[i].address);
-    payloadString += "\",\"r\":";
-    payloadString += String(uniqueBuffer[i].rssi);
-    payloadString += "}";
-    if (i < numberOfDevicesFound - 1) {
-      payloadString += ',';
-    }
-  }
-  // SenML ends. Add this stations MAC
-  payloadString += "],\"mac\":\"";
-  payloadString += String(WiFi.macAddress()); payloadString += "\"}";
 
-  // Print and publish payload
-  Serial.print("MAX len: ");
-  Serial.println(LOCAL_MQTT_MAX_PACKET_SIZE);
-
-  Serial.print("Payload length: ");
-  Serial.println(payloadString.length());
-  Serial.println(payloadString);
-
-  uint8_t messageCharBuffer[LOCAL_MQTT_MAX_PACKET_SIZE];
-  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
-
-  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
-  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
-    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
-  }
-  else {
-    Serial.print("Cant set the buffer..:(");
-  }
-  int result = mqttClient.publish("/scn-dvc", message_char_buffer, payloadString.length(), false);
-  Serial.print("PUB Result: ");
-  Serial.println(result);
-  if (mqttClient.setBufferSize(50)) {
-    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
-  }
-  else {
-    Serial.print("Cant set the buffer..:(");
-  }
-  // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
 }
 
 void publishDeviceInfoToMQTT() {
@@ -363,6 +321,65 @@ void debugIsPeopleInTheRoom(BeaconData *uniqueBuffer, int numberOfDevicesFound, 
   Serial.println("Requested people is not in the room.");
   digitalWrite(BLE_INFO_LED, LOW);
   return;
+}
+
+void numberOfPeopleInTheCalculator(BeaconData *uniqueBuffer, int numberOfDevicesFound, int threshold) {
+  int numberOfPeopleInTheRoom = 0;
+  for (uint8_t i = 0; i < numberOfDevicesFound; i++) {
+    Serial.println("Requested address is found");
+    //-100<-70 dont take it.
+    if (uniqueBuffer[i].rssi > threshold) {
+    Serial.print(i);
+    Serial.print(" : ");
+    Serial.print(uniqueBuffer[i].address);
+    Serial.print(" : ");
+    Serial.println(uniqueBuffer[i].rssi);
+      
+      numberOfPeopleInTheRoom++;
+    }
+  }
+  publishFakeNromDataToMQTT(numberOfPeopleInTheRoom);
+  Serial.println("Fake - numberOfPeopleInTheRoom");
+  Serial.print(numberOfPeopleInTheRoom);
+  return;
+}
+
+void publishFakeNromDataToMQTT(int numberOfPeopleInTheRoom) {
+  String payloadString = "";
+  payloadString += KITCHEN_DEVICE_MAC_ADDRESS;
+  payloadString += ";";
+  payloadString += String(numberOfPeopleInTheRoom);
+  payloadString += ";5";
+
+
+  // Print and publish payload
+  Serial.print("MAX len: ");
+  Serial.println(LOCAL_MQTT_MAX_PACKET_SIZE);
+
+  Serial.print("Payload length: ");
+  Serial.println(payloadString.length());
+  Serial.println(payloadString);
+
+  uint8_t messageCharBuffer[LOCAL_MQTT_MAX_PACKET_SIZE];
+  payloadString.getBytes(messageCharBuffer, payloadString.length() + 1);
+
+  payloadString.getBytes(message_char_buffer, payloadString.length() + 1);
+  if (mqttClient.setBufferSize(LOCAL_MQTT_MAX_PACKET_SIZE)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
+  int result = mqttClient.publish("/nrom-fake", message_char_buffer, payloadString.length(), false);
+  Serial.print("PUB Result: ");
+  Serial.println(result);
+  if (mqttClient.setBufferSize(50)) {
+    Serial.print("Buffer size set to: "); Serial.println(mqttClient.getBufferSize());
+  }
+  else {
+    Serial.print("Cant set the buffer..:(");
+  }
+  // Serial.println(mqttClient.publish("/o1/m1/esp32-1/info/yusuf", "test"));
 }
 
 void MQTTDebugger(int numberOfChars) {

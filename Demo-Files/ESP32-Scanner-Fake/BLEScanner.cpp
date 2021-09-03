@@ -30,11 +30,16 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       if (advertisedDevice.haveName() || advertisedDevice.haveServiceUUID())
       {
         pMAC_Address = new BLEAddress(advertisedDevice.getAddress());
+        if ( 
+          (strcmp(pMAC_Address->toString().c_str(), "ac:23:3f:65:9a:58") == 0) || 
+          (strcmp(pMAC_Address->toString().c_str(), "ac:23:3f:a3:35:69") == 0) || 
+          (strcmp(pMAC_Address->toString().c_str(), "ac:23:3f:a3:35:68") == 0))  {
         buffer[bufferIndex].rssi = advertisedDevice.getRSSI();
         //Serial.println("strcpy (buffer[bufferIndex].address, advertisedDevice.getAddress().toString().c_str());");
         strcpy (buffer[bufferIndex].address, advertisedDevice.getAddress().toString().c_str());
         bufferIndex++;
       }
+    }
     }
 };
 

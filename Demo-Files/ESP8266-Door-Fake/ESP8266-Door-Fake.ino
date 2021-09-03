@@ -132,7 +132,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(messageMacAddress, deviceMacAddress) == 0) {
     // Check if the MQTT message was received on topic esp32/relay1
-    if (strcmp(topic, "/nrom") == 0) {
+    if (strcmp(topic, "/nrom-fake") == 0) {
       Serial.println("Detected message at the topic nrom");
       numOfPeopleInTheRoom = atoi(strtok(NULL, delimeter));
       capacityOfRoom = atoi(strtok(NULL, delimeter));
@@ -226,7 +226,7 @@ void reconnectToTheBroker() {
       Serial.println("Connected.");
       digitalWrite(ONBOARD_LED1, LOW);
       //subscribe to topic
-      mqttClient.subscribe("/nrom");
+      mqttClient.subscribe("/nrom-fake");
       mqttClient.subscribe("/next-event/yusuf");
     }
     else {
