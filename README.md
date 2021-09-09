@@ -82,7 +82,7 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ## ESP32 - E-Paper Controller
 
-.....
+E-paper controller ESP32 constantly listens to the publishments coming to the MQTT topic to which it is subscribed. When there is Publishment, it runs the bluetooth functions and does a scan. When it matches the UUID advertised by the shelf label with the UUID data received by MQTT, it establishes a connection with the shelf label. If the connection is successful, it sends the data to the electronic shelf label. If not, it will scan again and try to connect. MQTT sends a warning message to the broker if it cannot find a UUID value to match by scanning. 
 
 ### Connection Diagram
 <p align="center">
@@ -96,7 +96,9 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ## E-Paper
 
-.....
+Electronic Shelf Label is ready for a connection request by ESP32 by constantly making advertisements. The shelf labels used for the hot desk have two different screens. Reserved and Available screens. According to the data received by ESP32, the shelf label display is updated. The shelf labels used for the Meeting Room also have two different screens. Busy and Next event screens. According to the data received by ESP32, the shelf label display is updated.
+
+![resim](https://user-images.githubusercontent.com/44584158/132695852-41f96476-604e-4485-b37b-de702ea20266.png)
 
 ### Connection Diagram
 <p align="center">
