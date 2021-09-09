@@ -3,8 +3,8 @@
 <!-- PROJECT LOGO -->
 <br/>
 <p align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/Yusufss4/Academy2021">
+    <img src="Demo-Files/Assets/HardwareLogo.png" alt="Logo" width="80" height="80">
   </a>
   <h1 align="center">Intership Project Indoor Positioning and Hotdesk</h1>
   <p align="center">
@@ -58,12 +58,12 @@ ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer f
 
 ### Connection Diagram
 <p align="center">
- <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="600">
+ <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="400">
  </p>
 
 ### Box Desing
 <p align="center">
-<img src="BoxDesigns/Images/Scanner.png" alt="Box Desing" width="600">
+<img src="BoxDesigns/Images/Scanner.png" alt="Box Desing" width="700">
 </p>
  
 ## ESP8266 Door Lighting Controller
@@ -72,12 +72,12 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ### Connection Diagram
 <p align="center">
- <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="600">
+ <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="400">
  </p>
 
 ### Box Desing
 <p align="center">
-<img src="BoxDesigns/Images/Door.png" alt="ESP8266 Door Lighting Controller Box Desing" width="600"> 
+<img src="BoxDesigns/Images/Door.png" alt="ESP8266 Door Lighting Controller Box Desing" width="700"> 
 </p>
 
 ## ESP32 - E-Paper Controller
@@ -86,12 +86,12 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ### Connection Diagram
 <p align="center">
- <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="600">
+ <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="400">
   </p>
 
 ### Box Desing
 <p align="center">
-<img src="BoxDesigns/Images/E-paper-controller.png" alt="Box Desing" width="600">
+<img src="BoxDesigns/Images/E-paper-controller.png" alt="Box Desing" width="700">
  </p>
 
 ## E-Paper
@@ -100,13 +100,13 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ### Connection Diagram
 <p align="center">
- <img src="images/logo.png" alt="E-Paper Connection Diagram" width="600">
+ <img src="images/logo.png" alt="E-Paper Connection Diagram" width="400">
  </p>
 
 ### Box Desing
 <p align="center">
-<img src="BoxDesigns/Images/ShelfLabel_1.png" alt="E-Paper Box Desing" width="600">
-<img src="BoxDesigns/Images/ShelfLabel_2.png" alt="E-Paper Box Desing" width="600">
+<img src="BoxDesigns/Images/ShelfLabel_1.png" alt="E-Paper Box Desing" width="700">
+<img src="BoxDesigns/Images/ShelfLabel_2.png" alt="E-Paper Box Desing" width="700">
 </p>
 
 # Required Parts (BOM)
@@ -210,15 +210,26 @@ General Diagram showing the communication can be seen below.
 # Team Behind the Hardware
 
 <p align="center">
-  <img title="Yusuf Savaş" src="image.png" alt="Yusuf Savaş" />
-  <img title="Utku Urkun" src="image.png" alt="Utku Urkun" />
-  <img title="Ata Korkusuz" src="image.png" alt="Ata Korkusuz" />
+<a href="https://www.linkedin.com/in/yusufss/">
+ <img title="Yusuf Savaş" src="Demo-Files/Assets/YusufSavaş.png" alt="Yusuf Savaş" /> </a>
+ <a href="https://www.linkedin.com/in/utkuurkun/">
+  <img title="Utku Urkun" src="Demo-Files/Assets/UtkuUrkun.png" alt="Utku Urkun" /> </a>
+  <a href="https://www.linkedin.com/in/ata-korkusuz-77707118b/">
+  <img title="Ata Korkusuz" src="Demo-Files/Assets/AtaKorkusuz.png" alt="Ata Korkusuz" /> </a>
 </p>
 
 <p align="center">
-  <img title="Berkay Arslan" src="image.png" alt="Berkay Arslan" />
-  <img title="Zeynep Bilge" src="image.png" alt="Zeynep Bilge" />
-  <img title="Emine Acar" src="image.png" alt="Emine Acar" />
+<a href="https://www.linkedin.com/in/berkay-arslan-3b9b95141/">
+  <img title="Berkay Arslan" src="Demo-Files/Assets/BerkayArslan.png" alt="Berkay Arslan" /> </a>
+  <a href="https://www.linkedin.com/in/zeynepbilge/">
+  <img title="Zeynep Bilge" src="Demo-Files/Assets/ZeynepBilge.png" alt="Zeynep Bilge" /> </a>
+  <a href="https://www.linkedin.com/in/emine-acar-8036639b/">
+  <img title="Emine Acar" src="Demo-Files/Assets/EmineAcar.png" alt="Emine Acar" /> </a>
+</p>
+
+<p align="center">
+<a href="https://www.linkedin.com/in/eymen-topcuoglu/">
+  <img title="Eymen Topçuoğlu" src="Demo-Files/Assets/EymenTopçuoğlu.png" alt="Eymen Topçuoğlu" /> </a>
 </p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
