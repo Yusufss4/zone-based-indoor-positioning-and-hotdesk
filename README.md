@@ -10,11 +10,11 @@
   <p align="center">
     Borda Academy 2021 Project Co-Working Smart Office Hardware Part
     <br/>
-    <a href="https://github.com/othneildrew/Best-README-Template">Watch Video</a>
+    <a href="https://youtu.be/FV2so5sVpH8">Watch Video</a>
     ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Report Bug</a>
+    <a href="https://github.com/Yusufss4/Academy2021/issues">Report Bug</a>
     ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Request Feature</a>
+    <a href="https://github.com/Yusufss4/Academy2021/issues">Request Feature</a>
   </p>
    <p align="center">
     Index
@@ -23,13 +23,13 @@
     ·
     <a href="#products">Products</a>
     ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Part List</a>
+    <a href="#Required-Parts-(BOM)">Part List</a>
         ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">How to Run</a>
+    <a href="#How-to-Build-and-Run">How to Run</a>
             ·
-      <a href="https://github.com/othneildrew/Best-README-Template/issues">MQTT</a>
+      <a href="#MQTT-Connections-/-Topics">MQTT</a>
             ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Team</a>
+    <a href="#-Team-Behind-the-Hardware">Team</a>
   </p>
 </p>
 
@@ -44,7 +44,7 @@ In this project there are three different task in the hardware section. These ar
  2. Capacity Calculation Per Office. Detecting a person if they are in the office or not using gateways. 
  3. Hotdesk and Meeting Room Scheduling. Controlling e-papers according to the information coming from the server. 
 
-<img src="images/logo.png" alt="Project Diagram" width="80" height="80">
+<img src="Hardware-Schematics/HardwareProducts.png" alt="Project Diagram" width="400" height="400">
 
 # Products
 
@@ -56,7 +56,7 @@ There are five different products in the project but only four of them can be co
 ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer filled with RSSI signals and MAC addresses of the scanned devices. Later duplicate signals are being averaged and removed from the buffer and passed to the new buffer. Later in the publish MQTT function this buffer is transformed to JSON format and sent along with the MAC address of the device itself to differentiate the rooms (devices) from each other. This information will be processed by the server application and with the threshold value determined for each room the server will decide if the person is in the room and if it is in the room which person it is and send the number of people in the room information to the /nrom topic.
 
 ### Connection Diagram
- <img src="images/logo.png" alt="Connection Diagram" width="500" height="500">
+ <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="500" height="500">
 
 ### Box Desing
 <img src="images/logo.png" alt="Box Desing" width="500" height="500">
@@ -66,7 +66,7 @@ ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer f
 ESP8266 always listens to the topic /nrom and whenever a message comes first by looking at the MAC addresses sent with the message it decides if the message is intended for it or not. If it is intended for that specific device according to the number of people information in the message it lights the NeoPixel LEDs. If the capacity is reached all LEDs will light in the color of red.
 
 ### Connection Diagram
- <img src="images/logo.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="500" height="500">
+ <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="500" height="500">
 
 ### Box Desing
 <img src="images/logo.png" alt="ESP8266 Door Lighting Controller Box Desing" width="500" height="500">
@@ -76,7 +76,7 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 .....
 
 ### Connection Diagram
- <img src="images/logo.png" alt="Connection Diagram" width="500" height="500">
+ <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="500" height="500">
 
 ### Box Desing
 <img src="images/logo.png" alt="Box Desing" width="500" height="500">
@@ -98,7 +98,7 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 ## BOM For ESP8266 - Door Lighting Controller
 
 | Name                                 | How                         | Piece | How Many          | Where         |
-| ------------------------------------ | --------------------------- | ----- | ----------------- | ------------- |
+|--------------------------------------|-----------------------------|-------|-------------------|---------------|
 | ESP32                                | Main Controller             | 1     | 1 Per Room/Device | Near the door |
 | NeoPixel 24 Ring                     | Capacity Indicator          | 1     | 1 Per Room/Device | Near the door |
 | 5V Adapter                           | Power for ESP32             | 1     | 1 Per Room/Device | Near the door |
@@ -116,7 +116,7 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 
 ## BOM For ESP32 - In Room Scanner
 | Name                                 | How                        | Piece | How Many          | Where           |
-| ------------------------------------ | -------------------------- | ----- | ----------------- | --------------- |
+|--------------------------------------|----------------------------|-------|-------------------|-----------------|
 | ESP32 DevkitV4                       | Main Controller            | 1     | 1 Per Room/Device | Inside the Room |
 | ESP32 Taoglas 2.4Ghz                 | External Antenna for ESP32 | 1     | 1 Per Room/Device | Inside the Room |
 | 5V Adapter                           | Power for ESP32            | 1     | 1 Per Room/Device | Inside the Room |
@@ -131,7 +131,7 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 
 ## BOM For ESP32 - E-Paper Controller
 | Name                                 | How                     | Piece | How Many          | Where           |
-| ------------------------------------ | ----------------------- | ----- | ----------------- | --------------- |
+|--------------------------------------|-------------------------|-------|-------------------|-----------------|
 | ESP32 DevkitV4                       | Main Controller         | 1     | 1 Per Room/Device | Inside the Room |
 | 5V Adapter                           | Power for ESP32         | 1     | 1 Per Room/Device | Inside the Room |
 | 4x6cm Soldering Prototype Board      | ESP32 Placement         | 1     | 1 Per Room/Device | Inside the Room |
@@ -144,15 +144,15 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 | 3D Printed Box Lower-Piece           | Box Base Plate          | 1     | 1 Per Room/Device | Inside the Room |
 
 ## Other Parts
-| Name                  | How                   | Piece | How Many       | Where              |
-| --------------------- | --------------------- | ----- | -------------- | ------------------ |
-| MTag2901 2.9" ESL Tag | Room Status Screen    | 1     | 1 per Room     | Near the door      |
-| MTag2901 2.7" ESL Tag | Hotdesk Status Screen | 2     | 1 per Table    | On the table       |
-| CR2450 3V Battery     | Battery for ESL       | 2     | 2 per ESL      | In ESL             |
-| CR2477 3V Battery     | Battery for E7 Beacon | 2     | 1 per People   | In Beacon          |
-| G1-C Gateway          | BLE Office Covarage   | 1     | 1 per Office   | Middle of Office   |
-| E7 Plus Beacon        | BLE Advertisement     | 2     | 1 per People   | On People's Pocket |
-| Extension cable       | To Extend Power       | 2     | As you require | Near Power         |
+| Name                   | How                   | Piece | How Many       | Where              |
+|------------------------|-----------------------|-------|----------------|--------------------|
+| MTag2901 2.9" ESL Tag  | Room Status Screen    | 1     | 1 per Room     | Near the door      |
+| MTag2901 2.7" ESL Tag  | Hotdesk Status Screen | 2     | 1 per Table    | On the table       |
+| CR2450 3V Battery      | Battery for ESL       | 2     | 2 per ESL      | In ESL             |
+| CR2477 3V Battery      | Battery for E7 Beacon | 2     | 1 per People   | In Beacon          |
+| G1-C Gateway           | BLE Office Covarage   | 1     | 1 per Office   | Middle of Office   |
+| E7 Plus Beacon         | BLE Advertisement     | 2     | 1 per People   | On People's Pocket |
+| Extension cable        | To Extend Power       | 2     | As you require | Near Power         |
 
 
 # How to Build and Run
@@ -177,8 +177,8 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 # MQTT Connections / Topics
 
  - Topic and Data Type documentation can be reached from [here.](https://docs.google.com/document/d/1uNCvFoLJsAC_Qh4L8_6ozjhal6APVGUYTeoTuyXoGE8/edit?usp=sharing)
- - General Diagram showing the communcation can be seen below.
- - <img src="images/logo.png" alt="MQTT Diagram" width="500" height="500">
+ - General Diagram showing the communication can be seen below.
+ - <img src="Hardware-Schematics/MQTT-Diagram.png" alt="MQTT Diagram" width="500" height="500">
  - To connect the devices you have to use a MQTT Broker. For the connections steps please follow How to Run steps.
 >Some of the alternatives for the MQTT Broker: 
 > - Deployed RabbitMQ 
@@ -186,7 +186,7 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 > - EMQX
 > - HiveMQ (Not Stable)
 
-# Team Behind the Hardware
+# Team Behind the Hardwares
 
 <p align="center">
   <img title="Yusuf Savaş" src="image.png" alt="Yusuf Savaş" />
@@ -202,16 +202,16 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/Yusufss4/Academy2021.svg?style=for-the-badge
+[contributors-url]: https://github.com/Yusufss4/Academy2021/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Yusufss4/Academy2021.svg?style=for-the-badge
+[forks-url]: https://github.com/Yusufss4/Academy2021/network/members
+[stars-shield]: https://img.shields.io/github/stars/Yusufss4/Academy2021.svg?style=for-the-badge
+[stars-url]: https://github.com/Yusufss4/Academy2021/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Yusufss4/Academy2021.svg?style=for-the-badge
+[issues-url]: https://github.com/Yusufss4/Academy2021/issues
+[license-shield]: https://img.shields.io/github/license/Yusufss4/Academy2021.svg?style=for-the-badge
+[license-url]: https://github.com/Yusufss4/Academy2021/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
+[linkedin-url]: https://linkedin.com/in/yusufss
 [product-screenshot]: images/screenshot.png
