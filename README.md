@@ -43,8 +43,9 @@ In this project there are three different task in the hardware section. These ar
  1. Capacity Calculation Per Room. Detecting a person if they are in the room and send information according to that.
  2. Capacity Calculation Per Office. Detecting a person if they are in the office or not using gateways. 
  3. Hotdesk and Meeting Room Scheduling. Controlling e-papers according to the information coming from the server. 
-
-<img src="Hardware-Schematics/HardwareProducts.png" alt="Project Diagram" width="400" height="400">
+<p align="center">
+<img src="Hardware-Schematics/HardwareProducts.png" alt="Project Diagram" width="700">
+</p>
 
 # Products
 
@@ -56,40 +57,57 @@ There are five different products in the project but only four of them can be co
 ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer filled with RSSI signals and MAC addresses of the scanned devices. Later duplicate signals are being averaged and removed from the buffer and passed to the new buffer. Later in the publish MQTT function this buffer is transformed to JSON format and sent along with the MAC address of the device itself to differentiate the rooms (devices) from each other. This information will be processed by the server application and with the threshold value determined for each room the server will decide if the person is in the room and if it is in the room which person it is and send the number of people in the room information to the /nrom topic.
 
 ### Connection Diagram
- <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="500" height="500">
+<p align="center">
+ <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="600">
+ </p>
 
 ### Box Desing
-<img src="images/logo.png" alt="Box Desing" width="500" height="500">
+<p align="center">
+<img src="BoxDesigns/Images/Scanner.png" alt="Box Desing" width="600">
+</p>
  
 ## ESP8266 Door Lighting Controller
 
 ESP8266 always listens to the topic /nrom and whenever a message comes first by looking at the MAC addresses sent with the message it decides if the message is intended for it or not. If it is intended for that specific device according to the number of people information in the message it lights the NeoPixel LEDs. If the capacity is reached all LEDs will light in the color of red.
 
 ### Connection Diagram
- <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="500" height="500">
+<p align="center">
+ <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="600">
+ </p>
 
 ### Box Desing
-<img src="images/logo.png" alt="ESP8266 Door Lighting Controller Box Desing" width="500" height="500">
+<p align="center">
+<img src="BoxDesigns/Images/Door.png" alt="ESP8266 Door Lighting Controller Box Desing" width="600"> 
+</p>
 
 ## ESP32 - E-Paper Controller
 
 .....
 
 ### Connection Diagram
- <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="500" height="500">
+<p align="center">
+ <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="600">
+  </p>
 
 ### Box Desing
-<img src="images/logo.png" alt="Box Desing" width="500" height="500">
+<p align="center">
+<img src="BoxDesigns/Images/E-paper-controller.png" alt="Box Desing" width="600">
+ </p>
 
 ## E-Paper
 
 .....
 
 ### Connection Diagram
- <img src="images/logo.png" alt="E-Paper Connection Diagram" width="500" height="500">
+<p align="center">
+ <img src="images/logo.png" alt="E-Paper Connection Diagram" width="600">
+ </p>
 
 ### Box Desing
-<img src="images/logo.png" alt="E-Paper Box Desing" width="500" height="500">
+<p align="center">
+<img src="BoxDesigns/Images/ShelfLabel_1.png" alt="E-Paper Box Desing" width="600">
+<img src="BoxDesigns/Images/ShelfLabel_2.png" alt="E-Paper Box Desing" width="600">
+</p>
 
 # Required Parts (BOM)
 
@@ -177,8 +195,6 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 # MQTT Connections / Topics
 
  - Topic and Data Type documentation can be reached from [here.](https://docs.google.com/document/d/1uNCvFoLJsAC_Qh4L8_6ozjhal6APVGUYTeoTuyXoGE8/edit?usp=sharing)
- - General Diagram showing the communication can be seen below.
- - <img src="Hardware-Schematics/MQTT-Diagram.png" alt="MQTT Diagram" width="500" height="500">
  - To connect the devices you have to use a MQTT Broker. For the connections steps please follow How to Run steps.
 >Some of the alternatives for the MQTT Broker: 
 > - Deployed RabbitMQ 
@@ -186,7 +202,12 @@ All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Of
 > - EMQX
 > - HiveMQ (Not Stable)
 
-# Team Behind the Hardwares
+General Diagram showing the communication can be seen below.
+<p align="center">
+<img src="Hardware-Schematics/MQTT-Diagram.png" alt="MQTT Diagram" width="700">
+</p>
+
+# Team Behind the Hardware
 
 <p align="center">
   <img title="Yusuf Savaş" src="image.png" alt="Yusuf Savaş" />
