@@ -4,7 +4,7 @@
 <br/>
 <p align="center">
   <a href="https://github.com/Yusufss4/Academy2021">
-    <img src="Demo-Files/Assets/HardwareLogo.png" alt="Logo" width="80" height="80">
+    <img src="Demo-Files/Assets/HardwareLogo.png" alt="Logo" width="140" height="140">
   </a>
   <h1 align="center">Intership Project Indoor Positioning and Hotdesk</h1>
   <p align="center">
@@ -211,25 +211,25 @@ General Diagram showing the communication can be seen below.
 
 <p align="center">
 <a href="https://www.linkedin.com/in/yusufss/">
- <img title="Yusuf Savaş" src="Demo-Files/Assets/YusufSavaş.png" alt="Yusuf Savaş" /> </a>
+ <img title="Yusuf Savaş" src="Demo-Files/Assets/YusufSavaş.png" width="100" alt="Yusuf Savaş"/> </a> 
  <a href="https://www.linkedin.com/in/utkuurkun/">
-  <img title="Utku Urkun" src="Demo-Files/Assets/UtkuUrkun.png" alt="Utku Urkun" /> </a>
+  <img title="Utku Urkun" src="Demo-Files/Assets/UtkuUrkun.png" width="100" alt="Utku Urkun" /> </a>
   <a href="https://www.linkedin.com/in/ata-korkusuz-77707118b/">
-  <img title="Ata Korkusuz" src="Demo-Files/Assets/AtaKorkusuz.png" alt="Ata Korkusuz" /> </a>
+  <img title="Ata Korkusuz" src="Demo-Files/Assets/AtaKorkusuz.png" width="100" alt="Ata Korkusuz" /> </a>
 </p>
 
 <p align="center">
 <a href="https://www.linkedin.com/in/berkay-arslan-3b9b95141/">
-  <img title="Berkay Arslan" src="Demo-Files/Assets/BerkayArslan.png" alt="Berkay Arslan" /> </a>
+  <img title="Berkay Arslan" src="Demo-Files/Assets/BerkayArslan.png" width="100" alt="Berkay Arslan" /> </a> 
   <a href="https://www.linkedin.com/in/zeynepbilge/">
-  <img title="Zeynep Bilge" src="Demo-Files/Assets/ZeynepBilge.png" alt="Zeynep Bilge" /> </a>
+  <img title="Zeynep Bilge" src="Demo-Files/Assets/ZeynepBilge.png" width="100" alt="Zeynep Bilge" /> </a>
   <a href="https://www.linkedin.com/in/emine-acar-8036639b/">
-  <img title="Emine Acar" src="Demo-Files/Assets/EmineAcar.png" alt="Emine Acar" /> </a>
+  <img title="Emine Acar" src="Demo-Files/Assets/EmineAcar.png" width="100" alt="Emine Acar" /> </a>
 </p>
 
 <p align="center">
 <a href="https://www.linkedin.com/in/eymen-topcuoglu/">
-  <img title="Eymen Topçuoğlu" src="Demo-Files/Assets/EymenTopçuoğlu.png" alt="Eymen Topçuoğlu" /> </a>
+  <img title="Eymen Topçuoğlu" src="Demo-Files/Assets/EymenTopçuoğlu.png" width="100" alt="Eymen Topçuoğlu" /> </a>
 </p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
