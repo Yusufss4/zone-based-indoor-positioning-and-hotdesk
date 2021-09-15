@@ -1,11 +1,14 @@
 #ifndef MQTT_CONFIG_H
 #define MQTT_CONFIG_H
 
-/* WiFi setup Change Yours*/
-#define WIFI_SSID            "Borda Guest"
-#define WIFI_PASSWORD        "healthcare.next"
+/* WiFi setup Change Yours
+#define WIFI_SSID            "SUPERONLINE_WiFi_5918"
+#define WIFI_PASSWORD        "V9dp6ACGgxjE"
 
-/* Dont Change !*/
+/*Device Types*/
+#define ESP32_SCANNER
+
+/* Dont Change !
 const char* ca_cert = \
 "-----BEGIN CERTIFICATE-----\n" \
 "MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/\n" \
@@ -41,6 +44,7 @@ const char* ca_cert = \
 #define MQTT_PASSWORD "academy2021"
 
 /* ALWAYS CHANGE!!*/
-#define CLIENT_ID "ESP32Client-ShelfLabel-Ata3"
+//#define CLIENT_ID (WiFi.macAddress())
+
 
 #endif /* IOT_CONFIGS_H */
