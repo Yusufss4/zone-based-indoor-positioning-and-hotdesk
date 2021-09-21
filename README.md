@@ -51,7 +51,7 @@ In this project there are three different task in the hardware section. These ar
 
 There are five different products in the project but only four of them can be coded and one of them can be only configured. 
 
-## ESP32 - In Room Scanner
+## ESP32 In Room Scanner
 
 ### Explanation
 ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer filled with RSSI signals and MAC addresses of the scanned devices. Later duplicate signals are being averaged and removed from the buffer and passed to the new buffer. Later in the publish MQTT function this buffer is transformed to JSON format and sent along with the MAC address of the device itself to differentiate the rooms (devices) from each other. This information will be processed by the server application and with the threshold value determined for each room the server will decide if the person is in the room and if it is in the room which person it is and send the number of people in the room information to the /nrom topic.
@@ -61,9 +61,14 @@ ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer f
  <img src="DiagramFiles/ESP32-Scanner_bb.png" alt="Connection Diagram" width="400">
  </p>
 
-### Box Desing
+### Box Design
 <p align="center">
-<img src="BoxDesigns/Images/Scanner.png" alt="Box Desing" width="700">
+<img src="BoxDesigns/Images/Scanner.png" alt="Box Design" width="700">
+</p>
+
+### Product
+<p align="center">
+<img src="Demo-Files/Assets/InRoomScanner.jpg" alt="Product" width="700">
 </p>
  
 ## ESP8266 Door Lighting Controller
@@ -75,12 +80,17 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
  <img src="DiagramFiles/ESP8266-NoLvlNoDHT_bb.png" alt="ESP8266 Door Lighting Controller Connection Diagram" width="400">
  </p>
 
-### Box Desing
+### Box Design
 <p align="center">
-<img src="BoxDesigns/Images/Door.png" alt="ESP8266 Door Lighting Controller Box Desing" width="700"> 
+<img src="BoxDesigns/Images/Door.png" alt="ESP8266 Door Lighting Controller Box Design" width="700"> 
 </p>
 
-## ESP32 - E-Paper Controller
+### Product
+<p align="center">
+<img src="Demo-Files/Assets/DoorLightControl.jpg" alt="Product" width="700">
+</p>
+
+## ESP32 E-Paper Controller
 
 E-paper controller ESP32 constantly listens to the publishments coming to the MQTT topic to which it is subscribed. When there is Publishment, it runs the bluetooth functions and does a scan. When it matches the UUID advertised by the shelf label with the UUID data received by MQTT, it establishes a connection with the shelf label. If the connection is successful, it sends the data to the electronic shelf label. If not, it will scan again and try to connect. MQTT sends a warning message to the broker if it cannot find a UUID value to match by scanning. 
 
@@ -89,33 +99,49 @@ E-paper controller ESP32 constantly listens to the publishments coming to the MQ
  <img src="DiagramFiles/ESP32-ShelfLabelController_bb.png" alt="Connection Diagram" width="400">
   </p>
 
-### Box Desing
+### Box Design
 <p align="center">
-<img src="BoxDesigns/Images/E-paper-controller.png" alt="Box Desing" width="700">
+<img src="BoxDesigns/Images/E-paper-controller.png" alt="Box Design" width="700">
  </p>
+
+### Product
+<p align="center">
+<img src="Demo-Files/Assets/EPaperScanner" alt="Product" width="700">
+</p>
 
 ## E-Paper
 
 Electronic Shelf Label is ready for a connection request by ESP32 by constantly making advertisements. The shelf labels used for the hot desk have two different screens. Reserved and Available screens. According to the data received by ESP32, the shelf label display is updated. The shelf labels used for the Meeting Room also have two different screens. Busy and Next event screens. According to the data received by ESP32, the shelf label display is updated.
+### Screen Design
+<p align="center">
+<img src="BoxDesigns/Images/E-PaperScreenDesign.png" alt="Product" width="700">
+</p>
 
+<!---
 ![resim](https://user-images.githubusercontent.com/44584158/132695852-41f96476-604e-4485-b37b-de702ea20266.png)
 
 ### Connection Diagram
 <p align="center">
  <img src="images/logo.png" alt="E-Paper Connection Diagram" width="400">
  </p>
+ -->
 
-### Box Desing
+### Box Design
 <p align="center">
-<img src="BoxDesigns/Images/ShelfLabel_1.png" alt="E-Paper Box Desing" width="700">
-<img src="BoxDesigns/Images/ShelfLabel_2.png" alt="E-Paper Box Desing" width="700">
+<img src="BoxDesigns/Images/ShelfLabel_1.png" alt="E-Paper Box Design" width="700">
+<img src="BoxDesigns/Images/ShelfLabel_2.png" alt="E-Paper Box Design" width="700">
+</p>
+
+### Product
+<p align="center">
+<img src="Demo-Files/Assets/EPaper" alt="Product" width="700">
 </p>
 
 # Required Parts (BOM)
 
 All the required parts are determined for 2 Hotdesk, 2 Beacon, 2 Room and one Office. If you want to increase the number of rooms that you want to install you have to multiply the ESP8266 Door Light and ESP32 In Room Scanner equipments by two. Each room has one ESP8266 and one ESP32.
 
-## BOM For ESP8266 - Door Lighting Controller
+## BOM For ESP8266 Door Lighting Controller
 
 | Name                                 | How                         | Piece | How Many          | Where         |
 |--------------------------------------|-----------------------------|-------|-------------------|---------------|
