@@ -68,7 +68,7 @@ ESP32 - In Room Scanner first scans the bluetooth devices and creates a buffer f
 
 ### Product
 <p align="center">
-<img src="Demo-Files/Assets/InRoomScanner.jpg" alt="Product" width="700">
+<img src="Demo-Files/Assets/InRoomScanner.png" alt="Product" width="700">
 </p>
  
 ## ESP8266 Door Lighting Controller
@@ -87,7 +87,7 @@ ESP8266 always listens to the topic /nrom and whenever a message comes first by 
 
 ### Product
 <p align="center">
-<img src="Demo-Files/Assets/DoorLightControl.jpg" alt="Product" width="700">
+<img src="Demo-Files/Assets/DoorLightControl.png" alt="Product" width="700">
 </p>
 
 ## ESP32 E-Paper Controller
@@ -106,7 +106,7 @@ E-paper controller ESP32 constantly listens to the publishments coming to the MQ
 
 ### Product
 <p align="center">
-<img src="Demo-Files/Assets/EPaperScanner" alt="Product" width="700">
+<img src="Demo-Files/Assets/EPaperScanner.png" alt="Product" width="700">
 </p>
 
 ## E-Paper
@@ -134,7 +134,7 @@ Electronic Shelf Label is ready for a connection request by ESP32 by constantly 
 
 ### Product
 <p align="center">
-<img src="Demo-Files/Assets/EPaper" alt="Product" width="700">
+<img src="Demo-Files/Assets/EPaper.png" alt="Product" width="700">
 </p>
 
 # Required Parts (BOM)
