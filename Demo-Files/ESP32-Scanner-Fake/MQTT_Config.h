@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "SUPERONLINE_WiFi_5918"
-#define WIFI_PASSWORD        "V9dp6ACGgxjE"
+#define WIFI_SSID            "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD        "YOUR_WIFI_PASSWORD"
 
 /*Device Types*/
 #define ESP32_SCANNER
@@ -38,10 +38,10 @@ const char* ca_cert = \
 #define MQTT_PASSWORD "Yusuf123*" */
 
 /* You can change but you dont need to*/
-#define MQTT_SERVER_NAME    "13.93.11.252"
+#define MQTT_SERVER_NAME    "YOUR_MQTT_SERVER_IP"
 #define MQTT_PORT    1883
-#define MQTT_USER_NAME "borda.academy:academy2021"
-#define MQTT_PASSWORD "academy2021"
+#define MQTT_USER_NAME "YOUR_MQTT_USER_NAME"
+#define MQTT_PASSWORD "YOUR_MQTT_PASSWORD"
 
 /* ALWAYS CHANGE!!*/
 //#define CLIENT_ID "ESP32Client-MeetingRoom"
