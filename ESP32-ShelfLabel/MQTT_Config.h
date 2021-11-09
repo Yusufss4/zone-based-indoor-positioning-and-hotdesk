@@ -2,8 +2,8 @@
 #define MQTT_CONFIG_H
 
 /* WiFi setup Change Yours*/
-#define WIFI_SSID            "Borda Guest"
-#define WIFI_PASSWORD        "healthcare.next"
+#define WIFI_SSID            "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD        "YOUR_WIFI_PASSWORD"
 
 /* Dont Change !*/
 const char* ca_cert = \
@@ -29,16 +29,16 @@ const char* ca_cert = \
 "-----END CERTIFICATE-----\n";
 
 /* You can change but you dont need to*/
-/*#define MQTT_SERVER_NAME    "f1ec066d96ce468e9e8ded72f52952b9.s2.eu.hivemq.cloud"
+/*#define MQTT_SERVER_NAME    "YOUR_MQTT_SERVER_NAME"
 #define MQTT_PORT    8883
-#define MQTT_USER_NAME "yusufss"
-#define MQTT_PASSWORD "Yusuf123*" */
+#define MQTT_USER_NAME "YOUR_MQTT_USER_NAME"
+#define MQTT_PASSWORD "YOUR_MQTT_USER_PASSWORD" */
 
 /* You can change but you dont need to*/
-#define MQTT_SERVER_NAME    "13.93.11.252"
+#define MQTT_SERVER_NAME    "YOUR_MQTT_SERVER_IP"
 #define MQTT_PORT    1883
-#define MQTT_USER_NAME "borda.academy:academy2021"
-#define MQTT_PASSWORD "academy2021"
+#define MQTT_USER_NAME "YOUR_MQTT_USER_NAME"
+#define MQTT_PASSWORD "YOUR_MQTT_PASSWORD"
 
 /* ALWAYS CHANGE!!*/
 #define CLIENT_ID "ESP32Client-ShelfLabel-Ata3"
